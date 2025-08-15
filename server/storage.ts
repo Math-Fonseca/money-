@@ -128,6 +128,11 @@ export class MemStorage implements IStorage {
 
   async deleteCategory(id: string): Promise<boolean> {
     return this.categories.delete(id);
+    return updated;
+  }
+
+  async deleteCategory(id: string): Promise<boolean> {
+    return this.categories.delete(id);
   }
 
   // Transactions

@@ -17,6 +17,7 @@ const expenseSchema = z.object({
   paymentMethod: z.string().min(1, "Método de pagamento é obrigatório"),
   creditCardId: z.string().optional(),
   installments: z.number().min(1).default(1),
+  isRecurring: z.boolean().default(false),
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -49,6 +50,7 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
       date: new Date().toISOString().split('T')[0],
       installments: 1,
       creditCardId: "",
+      isRecurring: false,
     }
   });
 
@@ -81,6 +83,7 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      queryClient.refetchQueries({ queryKey: ["/api/financial-summary"] });
     },
     onError: () => {
       toast({
@@ -254,6 +257,18 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
               </div>
             </>
           )}
+
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isRecurring"
+              {...form.register("isRecurring")}
+              className="rounded border-gray-300"
+            />
+            <Label htmlFor="isRecurring" className="text-sm">
+              Despesa recorrente (repete mensalmente)
+            </Label>
+          </div>
 
           <Button
             type="submit"

@@ -25,7 +25,9 @@ export default function Dashboard() {
   }>({
     queryKey: ["/api/financial-summary", selectedMonth, selectedYear],
     refetchOnWindowFocus: true,
-    refetchInterval: 5000, // Atualiza a cada 5 segundos
+    staleTime: 0,
+    gcTime: 0,
+    refetchInterval: 1000, // Atualiza a cada 1 segundo
   });
 
   const { data: categories = [] } = useQuery<Array<{
@@ -138,7 +140,7 @@ export default function Dashboard() {
         )}
 
         {activeTab === "categories" && (
-          <CategoryManager categories={categories} />
+          <CategoryManager />
         )}
 
         {activeTab === "settings" && (

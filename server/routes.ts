@@ -35,6 +35,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/categories/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const updatedCategory = await storage.updateCategory(id, updates);
+      
+      if (!updatedCategory) {
+        res.status(404).json({ message: "Category not found" });
+        return;
+      }
+      
+      res.json(updatedCategory);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+
+  app.delete("/api/categories/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteCategory(id);
+      
+      if (!deleted) {
+        res.status(404).json({ message: "Category not found" });
+        return;
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete category" });
+    }
+  });
+
   // Transactions
   app.get("/api/transactions", async (req, res) => {
     try {

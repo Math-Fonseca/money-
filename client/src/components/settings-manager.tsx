@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { getFifthBusinessDay, calculateWorkingDays } from "@/lib/financial-utils";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { Label } from "@/components/ui/label";
 const settingsSchema = z.object({
   dailyVT: z.string().min(0),
   dailyVR: z.string().min(0),
+  salary: z.string().min(0),
 });
 
 type SettingsFormData = z.infer<typeof settingsSchema>;
@@ -32,6 +34,7 @@ export default function SettingsManager() {
     defaultValues: {
       dailyVT: "0",
       dailyVR: "0",
+      salary: "0",
     }
   });
 
@@ -39,23 +42,26 @@ export default function SettingsManager() {
   useEffect(() => {
     const vtSetting = settings.find(s => s.key === "dailyVT");
     const vrSetting = settings.find(s => s.key === "dailyVR");
+    const salarySetting = settings.find(s => s.key === "salary");
     
     if (vtSetting) form.setValue("dailyVT", vtSetting.value);
     if (vrSetting) form.setValue("dailyVR", vrSetting.value);
+    if (salarySetting) form.setValue("salary", salarySetting.value);
   }, [settings, form]);
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: SettingsFormData) => {
       const promises = [
         apiRequest("POST", "/api/settings", { key: "dailyVT", value: data.dailyVT }),
-        apiRequest("POST", "/api/settings", { key: "dailyVR", value: data.dailyVR })
+        apiRequest("POST", "/api/settings", { key: "dailyVR", value: data.dailyVR }),
+        apiRequest("POST", "/api/settings", { key: "salary", value: data.salary })
       ];
       await Promise.all(promises);
     },
     onSuccess: () => {
       toast({
         title: "Configurações salvas",
-        description: "As configurações de VT/VR foram salvas com sucesso!",
+        description: "As configurações foram salvas com sucesso!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
     },
@@ -139,13 +145,54 @@ export default function SettingsManager() {
           </div>
         </div>
 
+        <div>
+          <Label htmlFor="salary">Salário Mensal (R$)</Label>
+          <Input
+            id="salary"
+            type="number"
+            step="0.01"
+            {...form.register("salary")}
+            placeholder="5000.00"
+          />
+          {(() => {
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1;
+            const currentYear = currentDate.getFullYear();
+            
+            // Calcular próximo pagamento (5º dia útil)
+            const nextPayment = getFifthBusinessDay(currentMonth, currentYear);
+            const isPaymentThisMonth = nextPayment > currentDate;
+            
+            let paymentDate;
+            if (isPaymentThisMonth) {
+              paymentDate = nextPayment;
+            } else {
+              // Se já passou o 5º dia útil deste mês, calcular o do próximo
+              const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+              const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;
+              paymentDate = getFifthBusinessDay(nextMonth, nextYear);
+            }
+            
+            return (
+              <p className="text-sm text-gray-600 mt-1">
+                Próximo pagamento: {paymentDate.toLocaleDateString('pt-BR', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric',
+                  weekday: 'short'
+                })}
+              </p>
+            );
+          })()}
+        </div>
+
         <div className="bg-blue-50 p-4 rounded-lg">
           <h4 className="font-medium text-blue-900 mb-2">Como funciona:</h4>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Configure os valores diários de VT e VR</li>
-            <li>• Ao cadastrar um salário, VT e VR serão incluídos automaticamente</li>
+            <li>• Salário é pago sempre no 5º dia útil do mês</li>
             <li>• O cálculo considera apenas dias úteis do mês</li>
-            <li>• Os valores podem ser alterados a qualquer momento</li>
+            <li>• Valores recorrentes aparecem nos meses futuros</li>
           </ul>
         </div>
 

@@ -1,25 +1,30 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Plus, Edit, Trash2 } from "lucide-react";
 
-const categorySchema = z.object({
+// Form schema para categorias
+const categoryFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   icon: z.string().min(1, "Ícone é obrigatório"),
   color: z.string().min(1, "Cor é obrigatória"),
-  type: z.enum(["income", "expense"]),
+  type: z.string().min(1, "Tipo é obrigatório"),
 });
 
-type CategoryFormData = z.infer<typeof categorySchema>;
+type CategoryFormData = z.infer<typeof categoryFormSchema>;
 
+// Ícones disponíveis
 const incomeIcons = [
   "💰", "💵", "💸", "🏦", "💎", "🎁", "💳", "🪙", 
   "📊", "📈", "💹", "🚇", "🍽️", "💻", "🎯", "⚡",
@@ -27,53 +32,79 @@ const incomeIcons = [
 ];
 
 const expenseIcons = [
-  "🍔", "🚗", "🏠", "🏥", "📚", "🎭", "👕", "📄", 
-  "📦", "⚡", "🛒", "🎮", "🎬", "🏃", "💊", "🔧",
-  "✈️", "🏖️", "🎪", "🍕", "☕", "🚌", "🚕", "🎵",
-  "📱", "💡", "🧽", "🍺", "🎂", "💇‍♀️", "🦷", "🐕",
-  "🚰", "💳", "🎯", "🏋️", "🚿", "🧴", "🍖", "🥤"
+  "🍔", "🍕", "🛒", "⛽", "🚗", "🏠", "💊", "🎬",
+  "🎮", "📱", "👕", "✈️", "🏥", "📚", "🎵", "💄",
+  "🐕", "🌿", "🔧", "🎯", "📦", "🚇", "🚌", "🧽"
 ];
 
-const colors = [
-  "#EF4444", "#F59E0B", "#10B981", "#2563EB", "#8B5CF6", 
-  "#EC4899", "#06B6D4", "#84CC16", "#6B7280", "#F97316",
-  "#14B8A6", "#3B82F6", "#7C3AED", "#DB2777", "#0EA5E9"
-];
-
-interface CategoryManagerProps {
-  categories: Array<{ id: string; name: string; icon: string; color: string; type: string }>;
+interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  type: string;
 }
 
-export default function CategoryManager({ categories }: CategoryManagerProps) {
-  const [open, setOpen] = useState(false);
+export default function CategoryManager() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
+  });
+
   const form = useForm<CategoryFormData>({
-    resolver: zodResolver(categorySchema),
+    resolver: zodResolver(categoryFormSchema),
     defaultValues: {
+      name: "",
+      icon: "",
+      color: "#3B82F6",
       type: "expense",
-    }
+    },
   });
 
   const createCategoryMutation = useMutation({
-    mutationFn: async (data: CategoryFormData) => {
-      const response = await apiRequest("POST", "/api/categories", data);
-      return response.json();
+    mutationFn: (data: CategoryFormData) => {
+      if (editingCategory) {
+        return apiRequest("PUT", `/api/categories/${editingCategory.id}`, data);
+      } else {
+        return apiRequest("POST", "/api/categories", data);
+      }
     },
     onSuccess: () => {
-      toast({
-        title: "Categoria criada",
-        description: "A categoria foi criada com sucesso!",
-      });
-      form.reset();
-      setOpen(false);
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      setIsDialogOpen(false);
+      setEditingCategory(null);
+      form.reset();
+      toast({
+        title: editingCategory ? "Categoria atualizada!" : "Categoria criada!",
+        description: editingCategory ? "Categoria atualizada com sucesso." : "Nova categoria adicionada com sucesso.",
+      });
     },
     onError: () => {
       toast({
         title: "Erro",
-        description: "Erro ao criar categoria. Tente novamente.",
+        description: "Falha ao salvar a categoria.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/categories/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      toast({
+        title: "Categoria removida",
+        description: "Categoria removida com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao remover a categoria.",
         variant: "destructive",
       });
     },
@@ -83,137 +114,203 @@ export default function CategoryManager({ categories }: CategoryManagerProps) {
     createCategoryMutation.mutate(data);
   };
 
+  const handleEdit = (category: Category) => {
+    setEditingCategory(category);
+    form.reset({
+      name: category.name,
+      icon: category.icon,
+      color: category.color,
+      type: category.type,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita.")) {
+      deleteCategoryMutation.mutate(id);
+    }
+  };
+
   const selectedType = form.watch("type");
   const availableIcons = selectedType === "income" ? incomeIcons : expenseIcons;
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-gray-900">Gerenciar Categorias</h3>
-        <Dialog open={open} onOpenChange={setOpen}>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Categorias</h2>
+          <p className="text-gray-600">Gerencie suas categorias de receitas e despesas</p>
+        </div>
+
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingCategory(null);
+            form.reset();
+          }
+        }}>
           <DialogTrigger asChild>
-            <Button>Criar Nova Categoria</Button>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Categoria
+            </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Criar Nova Categoria</DialogTitle>
+              <DialogTitle>
+                {editingCategory ? "Editar Categoria" : "Criar Nova Categoria"}
+              </DialogTitle>
             </DialogHeader>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <Label htmlFor="type">Tipo</Label>
-                <Select
-                  value={form.watch("type")}
-                  onValueChange={(value) => form.setValue("type", value as "income" | "expense")}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="income">Receita</SelectItem>
-                    <SelectItem value="expense">Despesa</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="name">Nome da Categoria</Label>
-                <Input
-                  id="name"
-                  {...form.register("name")}
-                  placeholder="Ex: Freelances"
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Alimentação" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                {form.formState.errors.name && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.name.message}</p>
-                )}
-              </div>
 
-              <div>
-                <Label>Escolha um Ícone</Label>
-                <div className="grid grid-cols-8 gap-2 p-3 border rounded-md max-h-32 overflow-y-auto">
-                  {availableIcons.map((icon) => (
-                    <button
-                      key={icon}
-                      type="button"
-                      className={`p-2 text-xl rounded hover:bg-gray-100 ${
-                        form.watch("icon") === icon ? "bg-blue-100 border-2 border-blue-500" : "border"
-                      }`}
-                      onClick={() => form.setValue("icon", icon)}
-                    >
-                      {icon}
-                    </button>
-                  ))}
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="income">Receita</SelectItem>
+                          <SelectItem value="expense">Despesa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="icon"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ícone</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um ícone" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {availableIcons.map((icon) => (
+                              <SelectItem key={icon} value={icon}>
+                                <span className="text-lg">{icon}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="color"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cor</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="color"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                {form.formState.errors.icon && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.icon.message}</p>
-                )}
-              </div>
 
-              <div>
-                <Label>Escolha uma Cor</Label>
-                <div className="grid grid-cols-5 gap-2 p-3 border rounded-md">
-                  {colors.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={`w-10 h-10 rounded-full border-2 ${
-                        form.watch("color") === color ? "border-gray-800" : "border-gray-300"
-                      }`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => form.setValue("color", color)}
-                    />
-                  ))}
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={createCategoryMutation.isPending}>
+                    {createCategoryMutation.isPending ? "Salvando..." : editingCategory ? "Atualizar" : "Criar"}
+                  </Button>
                 </div>
-                {form.formState.errors.color && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.color.message}</p>
-                )}
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={createCategoryMutation.isPending}>
-                  {createCategoryMutation.isPending ? "Criando..." : "Criar Categoria"}
-                </Button>
-              </div>
-            </form>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <h4 className="font-medium text-gray-900 mb-2">Categorias de Receita</h4>
-          <div className="space-y-2">
-            {categories.filter(c => c.type === "income").map((category) => (
-              <div key={category.id} className="flex items-center p-2 bg-gray-50 rounded-md">
-                <span className="text-lg mr-2">{category.icon}</span>
-                <span className="flex-1">{category.name}</span>
-                <div 
-                  className="w-4 h-4 rounded-full border"
-                  style={{ backgroundColor: category.color }}
-                />
+      {/* Categories List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {categories.map((category) => (
+          <Card key={category.id} className="relative">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: category.color + "20" }}
+                  >
+                    <span className="text-lg">{category.icon}</span>
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">{category.name}</CardTitle>
+                    <CardDescription className="text-xs">
+                      {category.type === "income" ? "Receita" : "Despesa"}
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEdit(category)}
+                    className="h-6 w-6 p-0"
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(category.id)}
+                    className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h4 className="font-medium text-gray-900 mb-2">Categorias de Despesa</h4>
-          <div className="space-y-2">
-            {categories.filter(c => c.type === "expense").map((category) => (
-              <div key={category.id} className="flex items-center p-2 bg-gray-50 rounded-md">
-                <span className="text-lg mr-2">{category.icon}</span>
-                <span className="flex-1">{category.name}</span>
-                <div 
-                  className="w-4 h-4 rounded-full border"
-                  style={{ backgroundColor: category.color }}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
+            </CardHeader>
+          </Card>
+        ))}
       </div>
+
+      {categories.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500 mb-4">Nenhuma categoria encontrada</p>
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Criar primeira categoria
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
