@@ -1,7 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertTransactionSchema, insertCategorySchema, insertBudgetSchema } from "@shared/schema";
+import { 
+  insertTransactionSchema, 
+  insertCategorySchema, 
+  insertBudgetSchema, 
+  insertCreditCardSchema,
+  insertSubscriptionSchema 
+} from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -240,6 +246,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(setting);
     } catch (error) {
       res.status(500).json({ message: "Failed to save setting" });
+    }
+  });
+
+  // Credit Cards
+  app.get("/api/credit-cards", async (req, res) => {
+    try {
+      const creditCards = await storage.getCreditCards();
+      res.json(creditCards);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch credit cards" });
+    }
+  });
+
+  app.post("/api/credit-cards", async (req, res) => {
+    try {
+      const creditCard = insertCreditCardSchema.parse(req.body);
+      const newCreditCard = await storage.createCreditCard(creditCard);
+      res.status(201).json(newCreditCard);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid credit card data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create credit card" });
+      }
+    }
+  });
+
+  app.put("/api/credit-cards/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const updatedCard = await storage.updateCreditCard(id, updates);
+      
+      if (!updatedCard) {
+        res.status(404).json({ message: "Credit card not found" });
+        return;
+      }
+      
+      res.json(updatedCard);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update credit card" });
+    }
+  });
+
+  app.delete("/api/credit-cards/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteCreditCard(id);
+      
+      if (!deleted) {
+        res.status(404).json({ message: "Credit card not found" });
+        return;
+      }
+      
+      res.json({ message: "Credit card deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete credit card" });
+    }
+  });
+
+  // Subscriptions
+  app.get("/api/subscriptions", async (req, res) => {
+    try {
+      const { active } = req.query;
+      
+      let subscriptions;
+      if (active === 'true') {
+        subscriptions = await storage.getActiveSubscriptions();
+      } else {
+        subscriptions = await storage.getSubscriptions();
+      }
+      
+      res.json(subscriptions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch subscriptions" });
+    }
+  });
+
+  app.post("/api/subscriptions", async (req, res) => {
+    try {
+      const subscription = insertSubscriptionSchema.parse(req.body);
+      const newSubscription = await storage.createSubscription(subscription);
+      res.status(201).json(newSubscription);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid subscription data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create subscription" });
+      }
+    }
+  });
+
+  app.put("/api/subscriptions/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const updatedSubscription = await storage.updateSubscription(id, updates);
+      
+      if (!updatedSubscription) {
+        res.status(404).json({ message: "Subscription not found" });
+        return;
+      }
+      
+      res.json(updatedSubscription);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update subscription" });
+    }
+  });
+
+  app.delete("/api/subscriptions/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteSubscription(id);
+      
+      if (!deleted) {
+        res.status(404).json({ message: "Subscription not found" });
+        return;
+      }
+      
+      res.json({ message: "Subscription deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete subscription" });
     }
   });
 

@@ -6,7 +6,11 @@ import {
   type Budget,
   type InsertBudget,
   type Setting,
-  type InsertSetting
+  type InsertSetting,
+  type CreditCard,
+  type InsertCreditCard,
+  type Subscription,
+  type InsertSubscription
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -38,6 +42,21 @@ export interface IStorage {
   getSettings(): Promise<Setting[]>;
   getSettingByKey(key: string): Promise<Setting | undefined>;
   createOrUpdateSetting(setting: InsertSetting): Promise<Setting>;
+
+  // Credit Cards
+  getCreditCards(): Promise<CreditCard[]>;
+  getCreditCardById(id: string): Promise<CreditCard | undefined>;
+  createCreditCard(creditCard: InsertCreditCard): Promise<CreditCard>;
+  updateCreditCard(id: string, creditCard: Partial<InsertCreditCard>): Promise<CreditCard | undefined>;
+  deleteCreditCard(id: string): Promise<boolean>;
+
+  // Subscriptions
+  getSubscriptions(): Promise<Subscription[]>;
+  getActiveSubscriptions(): Promise<Subscription[]>;
+  getSubscriptionById(id: string): Promise<Subscription | undefined>;
+  createSubscription(subscription: InsertSubscription): Promise<Subscription>;
+  updateSubscription(id: string, subscription: Partial<InsertSubscription>): Promise<Subscription | undefined>;
+  deleteSubscription(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -45,6 +64,8 @@ export class MemStorage implements IStorage {
   private transactions: Map<string, Transaction> = new Map();
   private budgets: Map<string, Budget> = new Map();
   private settings: Map<string, Setting> = new Map();
+  private creditCards: Map<string, CreditCard> = new Map();
+  private subscriptions: Map<string, Subscription> = new Map();
 
   constructor() {
     this.initializeDefaultData();
@@ -218,6 +239,80 @@ export class MemStorage implements IStorage {
       this.settings.set(id, newSetting);
       return newSetting;
     }
+  }
+
+  // Credit Cards
+  async getCreditCards(): Promise<CreditCard[]> {
+    return Array.from(this.creditCards.values()).filter(c => c.isActive);
+  }
+
+  async getCreditCardById(id: string): Promise<CreditCard | undefined> {
+    return this.creditCards.get(id);
+  }
+
+  async createCreditCard(creditCard: InsertCreditCard): Promise<CreditCard> {
+    const id = randomUUID();
+    const newCreditCard: CreditCard = { 
+      ...creditCard, 
+      id,
+      currentUsed: "0",
+      isActive: true,
+      createdAt: new Date()
+    };
+    this.creditCards.set(id, newCreditCard);
+    return newCreditCard;
+  }
+
+  async updateCreditCard(id: string, creditCard: Partial<InsertCreditCard>): Promise<CreditCard | undefined> {
+    const existing = this.creditCards.get(id);
+    if (!existing) return undefined;
+    
+    const updated: CreditCard = { ...existing, ...creditCard };
+    this.creditCards.set(id, updated);
+    return updated;
+  }
+
+  async deleteCreditCard(id: string): Promise<boolean> {
+    return this.creditCards.delete(id);
+  }
+
+  // Subscriptions
+  async getSubscriptions(): Promise<Subscription[]> {
+    return Array.from(this.subscriptions.values());
+  }
+
+  async getActiveSubscriptions(): Promise<Subscription[]> {
+    return Array.from(this.subscriptions.values()).filter(s => s.isActive);
+  }
+
+  async getSubscriptionById(id: string): Promise<Subscription | undefined> {
+    return this.subscriptions.get(id);
+  }
+
+  async createSubscription(subscription: InsertSubscription): Promise<Subscription> {
+    const id = randomUUID();
+    const newSubscription: Subscription = { 
+      ...subscription, 
+      id,
+      categoryId: subscription.categoryId || null,
+      isActive: true,
+      createdAt: new Date()
+    };
+    this.subscriptions.set(id, newSubscription);
+    return newSubscription;
+  }
+
+  async updateSubscription(id: string, subscription: Partial<InsertSubscription>): Promise<Subscription | undefined> {
+    const existing = this.subscriptions.get(id);
+    if (!existing) return undefined;
+    
+    const updated: Subscription = { ...existing, ...subscription };
+    this.subscriptions.set(id, updated);
+    return updated;
+  }
+
+  async deleteSubscription(id: string): Promise<boolean> {
+    return this.subscriptions.delete(id);
   }
 }
 

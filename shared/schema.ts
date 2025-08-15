@@ -40,15 +40,108 @@ export const settings = pgTable("settings", {
   value: text("value").notNull(),
 });
 
-// Add icon options schema for category creation
+export const creditCards = pgTable("credit_cards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  brand: text("brand").notNull(), // 'mastercard', 'visa', 'elo', 'american-express'
+  bank: text("bank").notNull(), // 'nubank', 'itau', 'bradesco', 'santander', etc.
+  limit: decimal("limit", { precision: 10, scale: 2 }).notNull(),
+  currentUsed: decimal("current_used", { precision: 10, scale: 2 }).default("0"),
+  closingDay: integer("closing_day").notNull(),
+  dueDay: integer("due_day").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const subscriptions = pgTable("subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  service: text("service").notNull(), // 'spotify', 'netflix', 'amazon-prime', etc.
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  billingDate: integer("billing_date").notNull(), // day of month
+  isActive: boolean("is_active").default(true),
+  categoryId: varchar("category_id").references(() => categories.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Expanded icon options with more categories
 export const iconOptionsSchema = z.object({
   income: z.array(z.string()).default([
     "💰", "💵", "💸", "🏦", "💎", "🎁", "💳", "🪙", 
-    "📊", "📈", "💹", "🚇", "🍽️", "💻", "🎯", "⚡"
+    "📊", "📈", "💹", "🚇", "🍽️", "💻", "🎯", "⚡",
+    "🏢", "👨‍💼", "📝", "🎓", "🏆", "💼", "🔧", "🎨"
   ]),
   expense: z.array(z.string()).default([
     "🍔", "🚗", "🏠", "🏥", "📚", "🎭", "👕", "📄", 
-    "📦", "⚡", "🛒", "🎮", "🎬", "🏃", "💊", "🔧"
+    "📦", "⚡", "🛒", "🎮", "🎬", "🏃", "💊", "🔧",
+    "✈️", "🏖️", "🎪", "🍕", "☕", "🚌", "🚕", "🎵",
+    "📱", "💡", "🧽", "🍺", "🎂", "💇‍♀️", "🦷", "🐕"
+  ])
+});
+
+// Credit card brand icons
+export const creditCardBrands = z.object({
+  brands: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    icon: z.string()
+  })).default([
+    { id: 'mastercard', name: 'MasterCard', icon: '💳' },
+    { id: 'visa', name: 'Visa', icon: '💳' },
+    { id: 'elo', name: 'Elo', icon: '💳' },
+    { id: 'american-express', name: 'American Express', icon: '💳' },
+    { id: 'hipercard', name: 'Hipercard', icon: '💳' }
+  ])
+});
+
+// Bank icons
+export const bankIcons = z.object({
+  banks: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    icon: z.string(),
+    color: z.string()
+  })).default([
+    { id: 'nubank', name: 'Nubank', icon: '🏦', color: '#8A05BE' },
+    { id: 'itau', name: 'Itaú', icon: '🏦', color: '#F37900' },
+    { id: 'bradesco', name: 'Bradesco', icon: '🏦', color: '#CC092F' },
+    { id: 'santander', name: 'Santander', icon: '🏦', color: '#EC0000' },
+    { id: 'caixa', name: 'Caixa', icon: '🏦', color: '#0066CC' },
+    { id: 'bb', name: 'Banco do Brasil', icon: '🏦', color: '#FBB040' },
+    { id: 'mercado-pago', name: 'Mercado Pago', icon: '🏦', color: '#009EE3' },
+    { id: 'inter', name: 'Inter', icon: '🏦', color: '#FF7A00' },
+    { id: 'c6', name: 'C6 Bank', icon: '🏦', color: '#FFD500' }
+  ])
+});
+
+// Subscription service icons
+export const subscriptionServices = z.object({
+  services: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    icon: z.string(),
+    color: z.string()
+  })).default([
+    { id: 'spotify', name: 'Spotify', icon: '🎵', color: '#1DB954' },
+    { id: 'netflix', name: 'Netflix', icon: '🎬', color: '#E50914' },
+    { id: 'amazon-prime', name: 'Amazon Prime', icon: '📦', color: '#FF9900' },
+    { id: 'disney-plus', name: 'Disney+', icon: '🏰', color: '#113CCF' },
+    { id: 'youtube-premium', name: 'YouTube Premium', icon: '🎥', color: '#FF0000' },
+    { id: 'paramount-plus', name: 'Paramount+', icon: '⭐', color: '#0064FF' },
+    { id: 'hbo-max', name: 'HBO Max', icon: '🎭', color: '#8B5CF6' },
+    { id: 'apple-tv', name: 'Apple TV+', icon: '📺', color: '#000000' },
+    { id: 'meli-plus', name: 'Meli+', icon: '📦', color: '#FFE600' },
+    { id: 'vivo', name: 'Vivo', icon: '📱', color: '#8B1538' },
+    { id: 'claro', name: 'Claro', icon: '📱', color: '#FF0000' },
+    { id: 'tim', name: 'TIM', icon: '📱', color: '#4169E1' },
+    { id: 'smartfit', name: 'Smart Fit', icon: '🏃', color: '#FFD700' },
+    { id: 'panobianco', name: 'Panobianco', icon: '🏋️', color: '#FF6B35' },
+    { id: 'ifood', name: 'iFood', icon: '🍔', color: '#EA1D2C' },
+    { id: 'uber-eats', name: 'Uber Eats', icon: '🍕', color: '#06C167' },
+    { id: 'rappi', name: 'Rappi', icon: '🛵', color: '#FF441F' },
+    { id: 'ea-play', name: 'EA Play', icon: '🎮', color: '#FF6C11' },
+    { id: 'xbox-gamepass', name: 'Xbox Game Pass', icon: '🎮', color: '#107C10' },
+    { id: 'playstation-plus', name: 'PlayStation Plus', icon: '🎮', color: '#003791' }
   ])
 });
 
@@ -77,6 +170,17 @@ export const insertSettingSchema = createInsertSchema(settings).omit({
   id: true,
 });
 
+export const insertCreditCardSchema = createInsertSchema(creditCards).omit({
+  id: true,
+  createdAt: true,
+  currentUsed: true,
+});
+
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type Category = typeof categories.$inferSelect;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type Transaction = typeof transactions.$inferSelect;
@@ -85,3 +189,7 @@ export type Budget = typeof budgets.$inferSelect;
 export type InsertBudget = z.infer<typeof insertBudgetSchema>;
 export type Setting = typeof settings.$inferSelect;
 export type InsertSetting = z.infer<typeof insertSettingSchema>;
+export type CreditCard = typeof creditCards.$inferSelect;
+export type InsertCreditCard = z.infer<typeof insertCreditCardSchema>;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;

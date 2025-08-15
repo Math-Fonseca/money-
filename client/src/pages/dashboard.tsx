@@ -8,6 +8,8 @@ import Charts from "@/components/charts";
 import MonthSelector from "@/components/month-selector";
 import CategoryManager from "@/components/category-manager";
 import SettingsManager from "@/components/settings-manager";
+import CreditCardManager from "@/components/credit-card-manager";
+import SubscriptionManager from "@/components/subscription-manager";
 import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
@@ -123,6 +125,14 @@ export default function Dashboard() {
             categories={categories}
             showFilters={true}
           />
+        )}
+
+        {activeTab === "credit-cards" && (
+          <CreditCardManager />
+        )}
+
+        {activeTab === "subscriptions" && (
+          <SubscriptionManager />
         )}
 
         {activeTab === "categories" && (
