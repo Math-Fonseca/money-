@@ -19,6 +19,7 @@ export const transactions = pgTable("transactions", {
   type: text("type").notNull(), // 'income' or 'expense'
   categoryId: varchar("category_id").references(() => categories.id),
   paymentMethod: text("payment_method"), // 'dinheiro', 'debito', 'credito', 'pix', 'transferencia'
+  creditCardId: varchar("credit_card_id").references(() => creditCards.id), // for credit card expenses
   isRecurring: boolean("is_recurring").default(false),
   installments: integer("installments").default(1),
   installmentNumber: integer("installment_number").default(1),
@@ -47,6 +48,7 @@ export const creditCards = pgTable("credit_cards", {
   bank: text("bank").notNull(), // 'nubank', 'itau', 'bradesco', 'santander', etc.
   limit: decimal("limit", { precision: 10, scale: 2 }).notNull(),
   currentUsed: decimal("current_used", { precision: 10, scale: 2 }).default("0"),
+  color: text("color").notNull().default("#3B82F6"),
   closingDay: integer("closing_day").notNull(),
   dueDay: integer("due_day").notNull(),
   isActive: boolean("is_active").default(true),

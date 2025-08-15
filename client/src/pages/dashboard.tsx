@@ -17,13 +17,15 @@ export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   
-  const { data: summary } = useQuery<{
+  const { data: summary, refetch: refetchSummary } = useQuery<{
     totalIncome: number;
     totalExpenses: number;
     currentBalance: number;
     expensesByCategory: Record<string, number>;
   }>({
     queryKey: ["/api/financial-summary", selectedMonth, selectedYear],
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000, // Atualiza a cada 5 segundos
   });
 
   const { data: categories = [] } = useQuery<Array<{

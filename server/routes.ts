@@ -290,6 +290,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/credit-cards/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const updatedCard = await storage.updateCreditCard(id, updates);
+      
+      if (!updatedCard) {
+        res.status(404).json({ message: "Credit card not found" });
+        return;
+      }
+      
+      res.json(updatedCard);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update credit card" });
+    }
+  });
+
   app.delete("/api/credit-cards/:id", async (req, res) => {
     try {
       const { id } = req.params;

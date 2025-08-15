@@ -98,6 +98,7 @@ export default function SubscriptionManager() {
       return apiRequest("POST", "/api/subscriptions", {
         ...data,
         amount: parseFloat(data.amount.replace(/[^\d,.-]/g, '').replace(',', '.')).toString(),
+        categoryId: data.categoryId === "none" ? null : data.categoryId,
       });
     },
     onSuccess: () => {
@@ -310,7 +311,7 @@ export default function SubscriptionManager() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Sem categoria</SelectItem>
+                          <SelectItem value="none">Sem categoria</SelectItem>
                           {categories.filter(c => c.type === 'expense').map((category) => (
                             <SelectItem key={category.id} value={category.id}>
                               <div className="flex items-center gap-2">

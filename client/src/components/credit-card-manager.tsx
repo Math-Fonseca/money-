@@ -22,6 +22,7 @@ const creditCardFormSchema = z.object({
   brand: z.string().min(1, "Bandeira é obrigatória"),
   bank: z.string().min(1, "Banco é obrigatório"),
   limit: z.string().min(1, "Limite é obrigatório"),
+  color: z.string().min(1, "Cor é obrigatória"),
   closingDay: z.coerce.number().min(1).max(31),
   dueDay: z.coerce.number().min(1).max(31),
 });
@@ -53,6 +54,7 @@ const banks = [
 interface CreditCard {
   id: string;
   name: string;
+  color: string;
   brand: string;
   bank: string;
   limit: string;
@@ -78,6 +80,7 @@ export default function CreditCardManager() {
       brand: "",
       bank: "",
       limit: "",
+      color: "#3B82F6",
       closingDay: 1,
       dueDay: 10,
     },
@@ -245,22 +248,41 @@ export default function CreditCardManager() {
                   />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="limit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Limite</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="R$ 1.000,00" 
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="limit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Limite</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="R$ 1.000,00" 
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="color"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cor do Cartão</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="color"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField

@@ -15,6 +15,7 @@ const expenseSchema = z.object({
   date: z.string().min(1, "Data é obrigatória"),
   categoryId: z.string().min(1, "Categoria é obrigatória"),
   paymentMethod: z.string().min(1, "Método de pagamento é obrigatório"),
+  creditCardId: z.string().optional(),
   installments: z.number().min(1).default(1),
 });
 
@@ -32,19 +33,42 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
     queryKey: ["/api/financial-summary"],
   });
 
+  const { data: creditCards = [] } = useQuery<Array<{
+    id: string;
+    name: string;
+    brand: string;
+    bank: string;
+    currentUsed: string;
+  }>>({
+    queryKey: ["/api/credit-cards"],
+  });
+
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       installments: 1,
+      creditCardId: "",
     }
   });
 
   const createExpenseMutation = useMutation({
     mutationFn: async (data: ExpenseFormData) => {
+      // Update credit card usage if using credit
+      if (data.paymentMethod === "credito" && data.creditCardId) {
+        const card = creditCards.find(c => c.id === data.creditCardId);
+        if (card) {
+          const newUsed = parseFloat(card.currentUsed || "0") + parseFloat(data.amount);
+          await apiRequest("PUT", `/api/credit-cards/${data.creditCardId}`, {
+            currentUsed: newUsed.toString()
+          });
+        }
+      }
+      
       const response = await apiRequest("POST", "/api/transactions", {
         ...data,
         type: "expense",
+        creditCardId: data.paymentMethod === "credito" ? data.creditCardId : null,
       });
       return response.json();
     },
@@ -56,6 +80,7 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
     },
     onError: () => {
       toast({
@@ -184,20 +209,50 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
           </div>
 
           {isCredit && (
-            <div>
-              <Label htmlFor="installments">Número de Parcelas</Label>
-              <Input
-                id="installments"
-                type="number"
-                min="1"
-                max="24"
-                {...form.register("installments", { valueAsNumber: true })}
-                placeholder="1"
-              />
-              {form.formState.errors.installments && (
-                <p className="text-sm text-red-600 mt-1">{form.formState.errors.installments.message}</p>
-              )}
-            </div>
+            <>
+              <div>
+                <Label htmlFor="creditCardId">Cartão de Crédito</Label>
+                <Select
+                  value={form.watch("creditCardId")}
+                  onValueChange={(value) => form.setValue("creditCardId", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o cartão" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {creditCards.length > 0 ? (
+                      creditCards.map((card) => (
+                        <SelectItem key={card.id} value={card.id}>
+                          💳 {card.name} ({card.brand.toUpperCase()})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        Nenhum cartão cadastrado
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {form.formState.errors.creditCardId && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.creditCardId.message}</p>
+                )}
+              </div>
+              
+              <div>
+                <Label htmlFor="installments">Número de Parcelas</Label>
+                <Input
+                  id="installments"
+                  type="number"
+                  min="1"
+                  max="24"
+                  {...form.register("installments", { valueAsNumber: true })}
+                  placeholder="1"
+                />
+                {form.formState.errors.installments && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.installments.message}</p>
+                )}
+              </div>
+            </>
           )}
 
           <Button

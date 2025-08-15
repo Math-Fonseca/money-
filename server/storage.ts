@@ -160,6 +160,7 @@ export class MemStorage implements IStorage {
       id,
       categoryId: transaction.categoryId || null,
       paymentMethod: transaction.paymentMethod || null,
+      creditCardId: transaction.creditCardId || null,
       isRecurring: transaction.isRecurring || null,
       installments: transaction.installments || null,
       installmentNumber: transaction.installmentNumber || null,
@@ -255,6 +256,7 @@ export class MemStorage implements IStorage {
     const newCreditCard: CreditCard = { 
       ...creditCard, 
       id,
+      color: creditCard.color || "#3B82F6",
       currentUsed: "0",
       isActive: true,
       createdAt: new Date()
