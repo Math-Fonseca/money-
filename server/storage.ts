@@ -137,6 +137,12 @@ export class MemStorage implements IStorage {
     const newTransaction: Transaction = { 
       ...transaction, 
       id,
+      categoryId: transaction.categoryId || null,
+      paymentMethod: transaction.paymentMethod || null,
+      isRecurring: transaction.isRecurring || null,
+      installments: transaction.installments || null,
+      installmentNumber: transaction.installmentNumber || null,
+      parentTransactionId: transaction.parentTransactionId || null,
       createdAt: new Date()
     };
     this.transactions.set(id, newTransaction);
@@ -169,7 +175,11 @@ export class MemStorage implements IStorage {
 
   async createBudget(budget: InsertBudget): Promise<Budget> {
     const id = randomUUID();
-    const newBudget: Budget = { ...budget, id };
+    const newBudget: Budget = { 
+      ...budget, 
+      id,
+      categoryId: budget.categoryId || null
+    };
     this.budgets.set(id, newBudget);
     return newBudget;
   }

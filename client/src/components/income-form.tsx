@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -27,12 +27,17 @@ interface IncomeFormProps {
 }
 
 export default function IncomeForm({ categories }: IncomeFormProps) {
-  const [dailyVT, setDailyVT] = useState("");
-  const [dailyVR, setDailyVR] = useState("");
-  const [workingDays, setWorkingDays] = useState(calculateWorkingDays(new Date()));
+  const [includeVTVR, setIncludeVTVR] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const { data: settings = [] } = useQuery<Array<{
+    key: string;
+    value: string;
+  }>>({
+    queryKey: ["/api/settings"],
+  });
 
   const form = useForm<IncomeFormData>({
     resolver: zodResolver(incomeSchema),
@@ -44,21 +49,70 @@ export default function IncomeForm({ categories }: IncomeFormProps) {
 
   const createIncomeMutation = useMutation({
     mutationFn: async (data: IncomeFormData) => {
-      const response = await apiRequest("POST", "/api/transactions", {
+      const transactions = [];
+      
+      // Main salary transaction
+      const mainTransaction = {
         ...data,
         type: "income",
         paymentMethod: "transferencia",
         installments: 1,
         installmentNumber: 1,
-      });
-      return response.json();
+      };
+      transactions.push(apiRequest("POST", "/api/transactions", mainTransaction));
+      
+      // Auto-add VT and VR if enabled
+      if (includeVTVR) {
+        const vtSetting = settings.find(s => s.key === "dailyVT");
+        const vrSetting = settings.find(s => s.key === "dailyVR");
+        const vtCategory = categories.find(c => c.name === "Vale Transporte");
+        const vrCategory = categories.find(c => c.name === "Vale Refeição");
+        
+        if (vtSetting && parseFloat(vtSetting.value) > 0 && vtCategory) {
+          const workingDays = calculateWorkingDays(new Date(data.date));
+          const monthlyVT = parseFloat(vtSetting.value) * workingDays;
+          
+          transactions.push(apiRequest("POST", "/api/transactions", {
+            description: `VT ${new Date(data.date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
+            amount: monthlyVT.toFixed(2),
+            date: data.date,
+            type: "income",
+            categoryId: vtCategory.id,
+            paymentMethod: "transferencia",
+            installments: 1,
+            installmentNumber: 1,
+          }));
+        }
+        
+        if (vrSetting && parseFloat(vrSetting.value) > 0 && vrCategory) {
+          const workingDays = calculateWorkingDays(new Date(data.date));
+          const monthlyVR = parseFloat(vrSetting.value) * workingDays;
+          
+          transactions.push(apiRequest("POST", "/api/transactions", {
+            description: `VR ${new Date(data.date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
+            amount: monthlyVR.toFixed(2),
+            date: data.date,
+            type: "income",
+            categoryId: vrCategory.id,
+            paymentMethod: "transferencia",
+            installments: 1,
+            installmentNumber: 1,
+          }));
+        }
+      }
+      
+      const responses = await Promise.all(transactions);
+      return responses[0].json();
     },
     onSuccess: () => {
       toast({
         title: "Receita cadastrada",
-        description: "A receita foi cadastrada com sucesso!",
+        description: includeVTVR 
+          ? "Receita cadastrada com VT/VR incluídos automaticamente!" 
+          : "A receita foi cadastrada com sucesso!",
       });
       form.reset();
+      setIncludeVTVR(false);
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
     },
@@ -75,8 +129,12 @@ export default function IncomeForm({ categories }: IncomeFormProps) {
     createIncomeMutation.mutate(data);
   };
 
-  const calculatedVT = parseFloat(dailyVT || "0") * workingDays;
-  const calculatedVR = parseFloat(dailyVR || "0") * workingDays;
+  // Get VT/VR settings for display
+  const vtSetting = settings.find(s => s.key === "dailyVT");
+  const vrSetting = settings.find(s => s.key === "dailyVR");
+  const workingDays = calculateWorkingDays(new Date());
+  const monthlyVT = (vtSetting ? parseFloat(vtSetting.value) : 0) * workingDays;
+  const monthlyVR = (vrSetting ? parseFloat(vrSetting.value) : 0) * workingDays;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -152,13 +210,28 @@ export default function IncomeForm({ categories }: IncomeFormProps) {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="recurring"
-              checked={form.watch("isRecurring")}
-              onCheckedChange={(checked) => form.setValue("isRecurring", !!checked)}
-            />
-            <Label htmlFor="recurring" className="text-sm">Receita recorrente</Label>
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="recurring"
+                checked={form.watch("isRecurring")}
+                onCheckedChange={(checked) => form.setValue("isRecurring", !!checked)}
+              />
+              <Label htmlFor="recurring" className="text-sm">Receita recorrente</Label>
+            </div>
+
+            {(monthlyVT > 0 || monthlyVR > 0) && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="includeVTVR"
+                  checked={includeVTVR}
+                  onCheckedChange={(checked) => setIncludeVTVR(!!checked)}
+                />
+                <Label htmlFor="includeVTVR" className="text-sm">
+                  Incluir VT/VR automaticamente ({formatCurrency(monthlyVT + monthlyVR)})
+                </Label>
+              </div>
+            )}
           </div>
 
           <Button
@@ -171,67 +244,42 @@ export default function IncomeForm({ categories }: IncomeFormProps) {
         </form>
       </div>
 
-      {/* VT/VR Calculator */}
+      {/* VT/VR Preview */}
       <div className="space-y-6">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Calculadora VT/VR</h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="dailyVT">VT Diário (R$)</Label>
-                <Input
-                  id="dailyVT"
-                  type="number"
-                  step="0.01"
-                  value={dailyVT}
-                  onChange={(e) => setDailyVT(e.target.value)}
-                  placeholder="26,00"
-                />
-              </div>
-              <div>
-                <Label htmlFor="dailyVR">VR Diário (R$)</Label>
-                <Input
-                  id="dailyVR"
-                  type="number"
-                  step="0.01"
-                  value={dailyVR}
-                  onChange={(e) => setDailyVR(e.target.value)}
-                  placeholder="15,00"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="workingDays">Dias Úteis no Mês</Label>
-              <Input
-                id="workingDays"
-                type="number"
-                value={workingDays}
-                onChange={(e) => setWorkingDays(parseInt(e.target.value) || 0)}
-              />
-            </div>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-700">
-                VT Mensal: <span className="font-semibold">{formatCurrency(calculatedVT)}</span>
-              </p>
-              <p className="text-sm text-gray-700">
-                VR Mensal: <span className="font-semibold">{formatCurrency(calculatedVR)}</span>
-              </p>
+        {(monthlyVT > 0 || monthlyVR > 0) && (
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Valores Configurados</h3>
+            <div className="space-y-3">
+              {monthlyVT > 0 && (
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <div>
+                    <span className="text-gray-700">VT Mensal</span>
+                    <p className="text-sm text-gray-600">{workingDays} dias úteis</p>
+                  </div>
+                  <span className="font-semibold text-secondary">{formatCurrency(monthlyVT)}</span>
+                </div>
+              )}
+              {monthlyVR > 0 && (
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <div>
+                    <span className="text-gray-700">VR Mensal</span>
+                    <p className="text-sm text-gray-600">{workingDays} dias úteis</p>
+                  </div>
+                  <span className="font-semibold text-secondary">{formatCurrency(monthlyVR)}</span>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Current Income Summary */}
+        {/* Income Tips */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo Mensal</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="text-gray-700">VT Calculado</span>
-              <span className="font-semibold text-secondary">{formatCurrency(calculatedVT)}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="text-gray-700">VR Calculado</span>
-              <span className="font-semibold text-secondary">{formatCurrency(calculatedVR)}</span>
-            </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Dicas</h3>
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600">💡 Configure VT/VR nas configurações para cálculo automático</p>
+            <p className="text-sm text-gray-600">💡 Marque "Incluir VT/VR" ao cadastrar salário</p>
+            <p className="text-sm text-gray-600">💡 Use receitas recorrentes para entradas mensais fixas</p>
+            <p className="text-sm text-gray-600">💡 Organize receitas por categorias específicas</p>
           </div>
         </div>
       </div>

@@ -9,6 +9,8 @@ export default function NavigationTabs({ activeTab, onTabChange }: NavigationTab
     { id: "income", label: "💵 Receitas" },
     { id: "expenses", label: "💸 Despesas" },
     { id: "history", label: "📋 Histórico" },
+    { id: "categories", label: "🏷️ Categorias" },
+    { id: "settings", label: "⚙️ Configurações" },
   ];
 
   return (

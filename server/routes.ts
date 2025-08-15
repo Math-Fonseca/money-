@@ -218,6 +218,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Settings
+  app.get("/api/settings", async (req, res) => {
+    try {
+      const settings = await storage.getSettings();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch settings" });
+    }
+  });
+
+  app.post("/api/settings", async (req, res) => {
+    try {
+      const { key, value } = req.body;
+      if (!key || value === undefined) {
+        res.status(400).json({ message: "Key and value are required" });
+        return;
+      }
+      
+      const setting = await storage.createOrUpdateSetting({ key, value });
+      res.json(setting);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to save setting" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

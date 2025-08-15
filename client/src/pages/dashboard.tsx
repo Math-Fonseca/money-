@@ -5,20 +5,43 @@ import IncomeForm from "@/components/income-form";
 import ExpenseForm from "@/components/expense-form";
 import TransactionHistory from "@/components/transaction-history";
 import Charts from "@/components/charts";
+import MonthSelector from "@/components/month-selector";
+import CategoryManager from "@/components/category-manager";
+import SettingsManager from "@/components/settings-manager";
 import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   
-  const { data: summary } = useQuery({
-    queryKey: ["/api/financial-summary"],
+  const { data: summary } = useQuery<{
+    totalIncome: number;
+    totalExpenses: number;
+    currentBalance: number;
+    expensesByCategory: Record<string, number>;
+  }>({
+    queryKey: ["/api/financial-summary", selectedMonth, selectedYear],
   });
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<Array<{
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+    type: string;
+  }>>({
     queryKey: ["/api/categories"],
   });
 
-  const { data: transactions = [] } = useQuery({
+  const { data: transactions = [] } = useQuery<Array<{
+    id: string;
+    description: string;
+    amount: string;
+    date: string;
+    type: 'income' | 'expense';
+    categoryId?: string;
+  }>>({
     queryKey: ["/api/transactions"],
   });
 
@@ -49,7 +72,19 @@ export default function Dashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-4">
+          <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
+          {activeTab === "dashboard" && (
+            <MonthSelector 
+              currentMonth={selectedMonth}
+              currentYear={selectedYear}
+              onMonthChange={(month, year) => {
+                setSelectedMonth(month);
+                setSelectedYear(year);
+              }}
+            />
+          )}
+        </div>
 
         {activeTab === "dashboard" && (
           <div className="space-y-8">
@@ -88,6 +123,14 @@ export default function Dashboard() {
             categories={categories}
             showFilters={true}
           />
+        )}
+
+        {activeTab === "categories" && (
+          <CategoryManager categories={categories} />
+        )}
+
+        {activeTab === "settings" && (
+          <SettingsManager />
         )}
       </div>
     </div>

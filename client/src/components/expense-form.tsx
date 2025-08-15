@@ -88,7 +88,7 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
   };
 
   // Calculate expenses by category for the summary
-  const expensesByCategory = summary?.expensesByCategory || {};
+  const expensesByCategory = (summary as any)?.expensesByCategory || {};
   const categoryExpenses = categories.map(category => ({
     ...category,
     amount: expensesByCategory[category.id] || 0,

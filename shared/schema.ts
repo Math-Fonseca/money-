@@ -40,6 +40,26 @@ export const settings = pgTable("settings", {
   value: text("value").notNull(),
 });
 
+// Add icon options schema for category creation
+export const iconOptionsSchema = z.object({
+  income: z.array(z.string()).default([
+    "💰", "💵", "💸", "🏦", "💎", "🎁", "💳", "🪙", 
+    "📊", "📈", "💹", "🚇", "🍽️", "💻", "🎯", "⚡"
+  ]),
+  expense: z.array(z.string()).default([
+    "🍔", "🚗", "🏠", "🏥", "📚", "🎭", "👕", "📄", 
+    "📦", "⚡", "🛒", "🎮", "🎬", "🏃", "💊", "🔧"
+  ])
+});
+
+export const colorOptionsSchema = z.object({
+  colors: z.array(z.string()).default([
+    "#EF4444", "#F59E0B", "#10B981", "#2563EB", "#8B5CF6", 
+    "#EC4899", "#06B6D4", "#84CC16", "#6B7280", "#F97316",
+    "#14B8A6", "#3B82F6", "#7C3AED", "#DB2777", "#0EA5E9"
+  ])
+});
+
 export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true,
 });
