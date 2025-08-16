@@ -272,6 +272,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update all recurring transactions by parent ID
+  app.put("/api/transactions/recurring/:parentId", async (req, res) => {
+    try {
+      const { parentId } = req.params;
+      const transactionData = insertTransactionSchema.partial().parse(req.body);
+      const updated = await storage.updateRecurringTransactions(parentId, transactionData);
+      
+      if (!updated) {
+        res.status(404).json({ message: "Recurring transactions not found" });
+        return;
+      }
+      
+      res.status(200).json({ message: "Recurring transactions updated successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid transaction data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update recurring transactions" });
+      }
+    }
+  });
+
   // Financial summary endpoint
   app.get("/api/financial-summary", async (req, res) => {
     try {

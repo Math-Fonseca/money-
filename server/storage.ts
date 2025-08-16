@@ -31,6 +31,7 @@ export interface IStorage {
   updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction | undefined>;
   deleteTransaction(id: string): Promise<boolean>;
   deleteRecurringTransactions(parentId: string): Promise<boolean>;
+  updateRecurringTransactions(parentId: string, transaction: Partial<InsertTransaction>): Promise<boolean>;
 
   // Budgets
   getBudgets(): Promise<Budget[]>;
@@ -226,7 +227,8 @@ export class MemStorage implements IStorage {
     }
     
     // Delete all recurring instances (children)
-    for (const [id, transaction] of this.transactions.entries()) {
+    const transactionEntries = Array.from(this.transactions.entries());
+    for (const [id, transaction] of transactionEntries) {
       if (transaction.parentTransactionId === parentId) {
         this.transactions.delete(id);
         deleted = true;
@@ -234,6 +236,30 @@ export class MemStorage implements IStorage {
     }
     
     return deleted;
+  }
+
+  async updateRecurringTransactions(parentId: string, updates: Partial<InsertTransaction>): Promise<boolean> {
+    let updated = false;
+    
+    // Update the parent transaction
+    const parentTransaction = this.transactions.get(parentId);
+    if (parentTransaction) {
+      const updatedParent: Transaction = { ...parentTransaction, ...updates };
+      this.transactions.set(parentId, updatedParent);
+      updated = true;
+    }
+    
+    // Update all recurring instances (children)
+    const transactionEntries = Array.from(this.transactions.entries());
+    for (const [id, transaction] of transactionEntries) {
+      if (transaction.parentTransactionId === parentId) {
+        const updatedChild: Transaction = { ...transaction, ...updates };
+        this.transactions.set(id, updatedChild);
+        updated = true;
+      }
+    }
+    
+    return updated;
   }
 
   // Budgets

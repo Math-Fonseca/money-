@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import RecurringEditModal from "./recurring-edit-modal";
 
 const editTransactionSchema = z.object({
   description: z.string().min(1, "Descrição é obrigatória"),
@@ -29,6 +30,8 @@ interface Transaction {
   type: 'income' | 'expense';
   categoryId?: string;
   paymentMethod?: string;
+  isRecurring?: boolean;
+  parentTransactionId?: string;
 }
 
 interface Category {
@@ -54,6 +57,8 @@ export default function TransactionEditModal({
 }: TransactionEditModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showRecurringModal, setShowRecurringModal] = useState(false);
+  const [pendingEditData, setPendingEditData] = useState<any>(null);
 
   const form = useForm<EditTransactionFormData>({
     resolver: zodResolver(editTransactionSchema),
@@ -93,7 +98,20 @@ export default function TransactionEditModal({
   });
 
   const handleSubmit = (data: EditTransactionFormData) => {
-    updateTransactionMutation.mutate(data);
+    const editData = {
+      ...data,
+      type: transaction?.type,
+    };
+    
+    // Check if transaction is recurring
+    const isRecurring = (transaction as any)?.isRecurring || (transaction as any)?.parentTransactionId;
+    
+    if (isRecurring) {
+      setPendingEditData(editData);
+      setShowRecurringModal(true);
+    } else {
+      updateTransactionMutation.mutate(data);
+    }
   };
 
   const filteredCategories = categories.filter(c => c.type === transaction?.type);
@@ -122,13 +140,14 @@ export default function TransactionEditModal({
   if (!transaction) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>
-            Editar {transaction.type === 'income' ? 'Receita' : 'Despesa'}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              Editar {transaction.type === 'income' ? 'Receita' : 'Despesa'}
+            </DialogTitle>
+          </DialogHeader>
 
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <div>
@@ -229,5 +248,24 @@ export default function TransactionEditModal({
         </form>
       </DialogContent>
     </Dialog>
+
+    {showRecurringModal && (
+      <RecurringEditModal
+        transaction={transaction}
+        editData={pendingEditData}
+        isOpen={showRecurringModal}
+        onClose={() => {
+          setShowRecurringModal(false);
+          setPendingEditData(null);
+        }}
+        onEditSingle={() => {
+          updateTransactionMutation.mutate(pendingEditData);
+        }}
+        onEditAll={() => {
+          // This will be handled by the RecurringEditModal itself
+        }}
+      />
+    )}
+    </>
   );
 }

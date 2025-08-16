@@ -58,6 +58,10 @@ export default function PhotoCropModal({
       sourceY = (image.naturalHeight - sourceHeight) / 2;
     }
 
+    // Limpar canvas com fundo branco
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    
     // Desenhar a imagem cortada no canvas
     ctx.drawImage(
       image,
