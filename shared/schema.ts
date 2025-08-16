@@ -52,6 +52,7 @@ export const creditCards = pgTable("credit_cards", {
   closingDay: integer("closing_day").notNull(),
   dueDay: integer("due_day").notNull(),
   isActive: boolean("is_active").default(true),
+  isBlocked: boolean("is_blocked").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, CreditCard, Trash2, FileText } from "lucide-react";
+import { Plus, CreditCard, Trash2, FileText, Edit } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import CreditCardInvoiceModal from "./credit-card-invoice-modal";
 
 // Form schema para cartões de crédito
@@ -26,6 +27,7 @@ const creditCardFormSchema = z.object({
   color: z.string().min(1, "Cor é obrigatória"),
   closingDay: z.coerce.number().min(1).max(31),
   dueDay: z.coerce.number().min(1).max(31),
+  isBlocked: z.boolean().optional(),
 });
 
 type CreditCardFormData = z.infer<typeof creditCardFormSchema>;
@@ -63,12 +65,15 @@ interface CreditCard {
   closingDay: number;
   dueDay: number;
   isActive: boolean;
+  isBlocked: boolean;
 }
 
 export default function CreditCardManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [selectedCreditCard, setSelectedCreditCard] = useState<CreditCard | null>(null);
+  const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -86,6 +91,7 @@ export default function CreditCardManager() {
       color: "#3B82F6",
       closingDay: 1,
       dueDay: 10,
+      isBlocked: false,
     },
   });
 
@@ -114,6 +120,33 @@ export default function CreditCardManager() {
     },
   });
 
+  const updateCardMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: CreditCardFormData }) => {
+      return apiRequest("PUT", `/api/credit-cards/${id}`, {
+        ...data,
+        limit: parseFloat(data.limit.replace(/[^\d,.-]/g, '').replace(',', '.')).toString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      setIsDialogOpen(false);
+      setIsEditMode(false);
+      setEditingCard(null);
+      form.reset();
+      toast({
+        title: "Cartão atualizado!",
+        description: "Cartão de crédito atualizado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar o cartão de crédito.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteCardMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/credit-cards/${id}`),
     onSuccess: () => {
@@ -133,7 +166,11 @@ export default function CreditCardManager() {
   });
 
   const onSubmit = (data: CreditCardFormData) => {
-    createCardMutation.mutate(data);
+    if (isEditMode && editingCard) {
+      updateCardMutation.mutate({ id: editingCard.id, data });
+    } else {
+      createCardMutation.mutate(data);
+    }
   };
 
   const formatCurrency = (amount: string) => {
@@ -167,14 +204,16 @@ export default function CreditCardManager() {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={handleNewCard}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Cartão
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Cadastrar Cartão de Crédito</DialogTitle>
+              <DialogTitle>
+                {isEditMode ? "Editar Cartão de Crédito" : "Cadastrar Cartão de Crédito"}
+              </DialogTitle>
             </DialogHeader>
             
             <Form {...form}>
@@ -329,12 +368,41 @@ export default function CreditCardManager() {
                   />
                 </div>
 
+                {isEditMode && (
+                  <FormField
+                    control={form.control}
+                    name="isBlocked"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Bloquear cartão
+                          </FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            O cartão aparecerá desfocado e com indicação de bloqueio
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                )}
+
                 <div className="flex justify-end gap-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setIsDialogOpen(false);
+                    setIsEditMode(false);
+                    setEditingCard(null);
+                  }}>
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={createCardMutation.isPending}>
-                    {createCardMutation.isPending ? "Salvando..." : "Salvar"}
+                  <Button type="submit" disabled={createCardMutation.isPending || updateCardMutation.isPending}>
+                    {(createCardMutation.isPending || updateCardMutation.isPending) ? "Salvando..." : (isEditMode ? "Atualizar" : "Salvar")}
                   </Button>
                 </div>
               </form>
@@ -362,7 +430,7 @@ export default function CreditCardManager() {
             return (
               <Card 
                 key={card.id} 
-                className="relative overflow-hidden cursor-pointer hover:shadow-lg transition-shadow" 
+                className={`relative overflow-hidden cursor-pointer hover:shadow-lg transition-all ${card.isBlocked ? 'opacity-60 blur-[1px]' : ''}`}
                 onClick={() => handleCardClick(card)}
               >
                 <div 
@@ -386,6 +454,14 @@ export default function CreditCardManager() {
                         className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                       >
                         <FileText className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleEditCard(card, e)}
+                        className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
+                      >
+                        <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -437,11 +513,18 @@ export default function CreditCardManager() {
                       </div>
                     </div>
 
-                    <Badge 
-                      variant={usagePercentage > 80 ? "destructive" : usagePercentage > 60 ? "default" : "secondary"}
-                    >
-                      {usagePercentage.toFixed(1)}% utilizado
-                    </Badge>
+                    <div className="flex items-center justify-between">
+                      <Badge 
+                        variant={usagePercentage > 80 ? "destructive" : usagePercentage > 60 ? "default" : "secondary"}
+                      >
+                        {usagePercentage.toFixed(1)}% utilizado
+                      </Badge>
+                      {card.isBlocked && (
+                        <Badge variant="destructive">
+                          Cartão bloqueado
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -464,6 +547,39 @@ export default function CreditCardManager() {
   function handleCardClick(card: CreditCard) {
     setSelectedCreditCard(card);
     setIsInvoiceModalOpen(true);
+  }
+
+  function handleEditCard(card: CreditCard, e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditingCard(card);
+    setIsEditMode(true);
+    form.reset({
+      name: card.name,
+      brand: card.brand,
+      bank: card.bank,
+      limit: card.limit,
+      color: card.color,
+      closingDay: card.closingDay,
+      dueDay: card.dueDay,
+      isBlocked: card.isBlocked,
+    });
+    setIsDialogOpen(true);
+  }
+
+  function handleNewCard() {
+    setEditingCard(null);
+    setIsEditMode(false);
+    form.reset({
+      name: "",
+      brand: "",
+      bank: "",
+      limit: "",
+      color: "#3B82F6",
+      closingDay: 1,
+      dueDay: 10,
+      isBlocked: false,
+    });
+    setIsDialogOpen(true);
   }
 
   function getUsageColor(percentage: number) {

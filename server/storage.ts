@@ -51,7 +51,7 @@ export interface IStorage {
   getCreditCards(): Promise<CreditCard[]>;
   getCreditCardById(id: string): Promise<CreditCard | undefined>;
   createCreditCard(creditCard: InsertCreditCard): Promise<CreditCard>;
-  updateCreditCard(id: string, creditCard: Partial<InsertCreditCard>): Promise<CreditCard | undefined>;
+  updateCreditCard(id: string, creditCard: Partial<CreditCard>): Promise<CreditCard | undefined>;
   deleteCreditCard(id: string): Promise<boolean>;
 
   // Subscriptions
@@ -70,6 +70,7 @@ export class MemStorage implements IStorage {
   private settings: Map<string, Setting> = new Map();
   private creditCards: Map<string, CreditCard> = new Map();
   private subscriptions: Map<string, Subscription> = new Map();
+  private creditCardInvoices: Map<string, CreditCardInvoice> = new Map();
 
   constructor() {
     this.initializeDefaultData();
@@ -339,13 +340,14 @@ export class MemStorage implements IStorage {
       color: creditCard.color || "#3B82F6",
       currentUsed: "0",
       isActive: true,
+      isBlocked: creditCard.isBlocked || false,
       createdAt: new Date()
     };
     this.creditCards.set(id, newCreditCard);
     return newCreditCard;
   }
 
-  async updateCreditCard(id: string, creditCard: Partial<InsertCreditCard>): Promise<CreditCard | undefined> {
+  async updateCreditCard(id: string, creditCard: Partial<CreditCard>): Promise<CreditCard | undefined> {
     const existing = this.creditCards.get(id);
     if (!existing) return undefined;
     
@@ -395,6 +397,56 @@ export class MemStorage implements IStorage {
 
   async deleteSubscription(id: string): Promise<boolean> {
     return this.subscriptions.delete(id);
+  }
+
+  // Credit Card Invoices
+  async getCreditCardInvoices(): Promise<CreditCardInvoice[]> {
+    return Array.from(this.creditCardInvoices.values());
+  }
+
+  async getCreditCardInvoiceById(id: string): Promise<CreditCardInvoice | undefined> {
+    return this.creditCardInvoices.get(id);
+  }
+
+  async getCreditCardInvoicesByCard(creditCardId: string): Promise<CreditCardInvoice[]> {
+    return Array.from(this.creditCardInvoices.values()).filter(i => i.creditCardId === creditCardId);
+  }
+
+  async getCreditCardInvoiceByCardAndDate(creditCardId: string, dueDate: string): Promise<CreditCardInvoice | undefined> {
+    return Array.from(this.creditCardInvoices.values()).find(i => 
+      i.creditCardId === creditCardId && i.dueDate === dueDate
+    );
+  }
+
+  async createCreditCardInvoice(invoice: InsertCreditCardInvoice): Promise<CreditCardInvoice> {
+    const id = randomUUID();
+    const newInvoice: CreditCardInvoice = { 
+      ...invoice, 
+      id,
+      status: invoice.status || "pending",
+      totalAmount: invoice.totalAmount || "0",
+      paidAmount: invoice.paidAmount || "0",
+      isInstallment: invoice.isInstallment || false,
+      installmentCount: invoice.installmentCount || null,
+      installmentNumber: invoice.installmentNumber || null,
+      parentInvoiceId: invoice.parentInvoiceId || null,
+      createdAt: new Date()
+    };
+    this.creditCardInvoices.set(id, newInvoice);
+    return newInvoice;
+  }
+
+  async updateCreditCardInvoice(id: string, invoice: Partial<InsertCreditCardInvoice>): Promise<CreditCardInvoice | undefined> {
+    const existing = this.creditCardInvoices.get(id);
+    if (!existing) return undefined;
+    
+    const updated: CreditCardInvoice = { ...existing, ...invoice };
+    this.creditCardInvoices.set(id, updated);
+    return updated;
+  }
+
+  async deleteCreditCardInvoice(id: string): Promise<boolean> {
+    return this.creditCardInvoices.delete(id);
   }
 }
 

@@ -462,20 +462,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/credit-cards/:id", async (req, res) => {
+  // Rota para buscar transações de cartão de crédito por período
+  app.get("/api/transactions/credit-card/:cardId/:startDate/:endDate", async (req, res) => {
     try {
-      const { id } = req.params;
-      const updates = req.body;
-      const updatedCard = await storage.updateCreditCard(id, updates);
+      const { cardId, startDate, endDate } = req.params;
       
-      if (!updatedCard) {
-        res.status(404).json({ message: "Credit card not found" });
-        return;
+      // Buscar transações do cartão no período específico
+      const transactions = await storage.getTransactions();
+      const cardTransactions = transactions.filter(t => 
+        t.creditCardId === cardId && 
+        t.date >= startDate && 
+        t.date <= endDate
+      );
+      
+      res.json(cardTransactions);
+    } catch (error) {
+      console.error("Erro ao buscar transações do cartão:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
+  // Rota para buscar faturas de cartão de crédito
+  app.get("/api/credit-card-invoices/:cardId/:dueDate", async (req, res) => {
+    try {
+      const { cardId, dueDate } = req.params;
+      
+      // Buscar ou criar fatura para a data específica
+      let invoice = await storage.getCreditCardInvoiceByCardAndDate?.(cardId, dueDate);
+      
+      if (!invoice) {
+        // Criar nova fatura se não existir
+        invoice = await storage.createCreditCardInvoice?.({
+          creditCardId: cardId,
+          dueDate: dueDate,
+          totalAmount: "0",
+          paidAmount: "0",
+          status: "pending"
+        });
       }
       
-      res.json(updatedCard);
+      res.json(invoice || { totalAmount: "0", paidAmount: "0", status: "pending" });
     } catch (error) {
-      res.status(500).json({ message: "Failed to update credit card" });
+      console.error("Erro ao buscar fatura do cartão:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
 
