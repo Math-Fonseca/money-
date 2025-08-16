@@ -79,19 +79,6 @@ export class MemStorage implements IStorage {
   }
 
   private initializeDefaultData() {
-    // Default expense categories
-    const expenseCategories: InsertCategory[] = [
-      { name: "Alimentação", icon: "🍔", color: "#EF4444", type: "expense" },
-      { name: "Transporte", icon: "🚗", color: "#F59E0B", type: "expense" },
-      { name: "Moradia", icon: "🏠", color: "#8B5CF6", type: "expense" },
-      { name: "Saúde", icon: "🏥", color: "#10B981", type: "expense" },
-      { name: "Educação", icon: "📚", color: "#2563EB", type: "expense" },
-      { name: "Lazer", icon: "🎭", color: "#EC4899", type: "expense" },
-      { name: "Roupas", icon: "👕", color: "#06B6D4", type: "expense" },
-      { name: "Contas", icon: "📄", color: "#6B7280", type: "expense" },
-      { name: "Outros", icon: "📦", color: "#84CC16", type: "expense" },
-    ];
-
     // Default income categories
     const incomeCategories: InsertCategory[] = [
       { name: "Salário", icon: "💰", color: "#10B981", type: "income" },
@@ -99,10 +86,83 @@ export class MemStorage implements IStorage {
       { name: "Vale Refeição", icon: "🍽️", color: "#F59E0B", type: "income" },
       { name: "Freelance", icon: "💻", color: "#8B5CF6", type: "income" },
       { name: "Bônus", icon: "🎁", color: "#EC4899", type: "income" },
+      { name: "Investimentos", icon: "📈", color: "#059669", type: "income" },
+      { name: "Vendas", icon: "🏪", color: "#7C3AED", type: "income" },
+      { name: "Aluguel", icon: "🏘️", color: "#DC2626", type: "income" },
+      { name: "Pensão", icon: "👥", color: "#0891B2", type: "income" },
+      { name: "Restituição", icon: "🧾", color: "#CA8A04", type: "income" },
       { name: "Outros", icon: "💵", color: "#6B7280", type: "income" },
     ];
 
-    [...expenseCategories, ...incomeCategories].forEach(cat => {
+    // Default expense categories  
+    const expenseCategories: InsertCategory[] = [
+      { name: "Alimentação", icon: "🍔", color: "#EF4444", type: "expense" },
+      { name: "Supermercado", icon: "🛒", color: "#DC2626", type: "expense" },
+      { name: "Restaurantes", icon: "🍽️", color: "#F59E0B", type: "expense" },
+      { name: "Transporte", icon: "🚗", color: "#F59E0B", type: "expense" },
+      { name: "Combustível", icon: "⛽", color: "#EF4444", type: "expense" },
+      { name: "Uber/Taxi", icon: "🚖", color: "#FCD34D", type: "expense" },
+      { name: "Estacionamento", icon: "🅿️", color: "#6B7280", type: "expense" },
+      { name: "Moradia", icon: "🏠", color: "#8B5CF6", type: "expense" },
+      { name: "Aluguel", icon: "🏘️", color: "#7C3AED", type: "expense" },
+      { name: "Financiamento", icon: "🏦", color: "#DC2626", type: "expense" },
+      { name: "Condomínio", icon: "🏢", color: "#6B7280", type: "expense" },
+      { name: "Energia", icon: "⚡", color: "#FCD34D", type: "expense" },
+      { name: "Água", icon: "💧", color: "#0891B2", type: "expense" },
+      { name: "Gás", icon: "🔥", color: "#F59E0B", type: "expense" },
+      { name: "Internet", icon: "📡", color: "#2563EB", type: "expense" },
+      { name: "Telefone", icon: "📞", color: "#059669", type: "expense" },
+      { name: "Saúde", icon: "🏥", color: "#10B981", type: "expense" },
+      { name: "Farmácia", icon: "💊", color: "#EF4444", type: "expense" },
+      { name: "Médico", icon: "👨‍⚕️", color: "#059669", type: "expense" },
+      { name: "Dentista", icon: "🦷", color: "#0891B2", type: "expense" },
+      { name: "Plano de Saúde", icon: "🩺", color: "#DC2626", type: "expense" },
+      { name: "Academia", icon: "💪", color: "#F59E0B", type: "expense" },
+      { name: "Educação", icon: "📚", color: "#2563EB", type: "expense" },
+      { name: "Cursos", icon: "🎓", color: "#7C3AED", type: "expense" },
+      { name: "Livros", icon: "📖", color: "#059669", type: "expense" },
+      { name: "Material Escolar", icon: "✏️", color: "#F59E0B", type: "expense" },
+      { name: "Lazer", icon: "🎭", color: "#EC4899", type: "expense" },
+      { name: "Cinema", icon: "🎬", color: "#DC2626", type: "expense" },
+      { name: "Viagem", icon: "✈️", color: "#0891B2", type: "expense" },
+      { name: "Hotel", icon: "🏨", color: "#7C3AED", type: "expense" },
+      { name: "Eventos", icon: "🎉", color: "#EC4899", type: "expense" },
+      { name: "Roupas", icon: "👕", color: "#06B6D4", type: "expense" },
+      { name: "Calçados", icon: "👞", color: "#92400E", type: "expense" },
+      { name: "Acessórios", icon: "💍", color: "#A855F7", type: "expense" },
+      { name: "Beleza", icon: "💄", color: "#EC4899", type: "expense" },
+      { name: "Cabelo", icon: "💇‍♀️", color: "#F59E0B", type: "expense" },
+      { name: "Tecnologia", icon: "📱", color: "#2563EB", type: "expense" },
+      { name: "Eletrônicos", icon: "💻", color: "#6B7280", type: "expense" },
+      { name: "Casa", icon: "🛋️", color: "#92400E", type: "expense" },
+      { name: "Ferramentas", icon: "🔧", color: "#6B7280", type: "expense" },
+      { name: "Pets", icon: "🐕", color: "#F59E0B", type: "expense" },
+      { name: "Veterinário", icon: "🩺", color: "#059669", type: "expense" },
+      { name: "Impostos", icon: "🧾", color: "#DC2626", type: "expense" },
+      { name: "Seguros", icon: "🛡️", color: "#6B7280", type: "expense" },
+      { name: "Bancos", icon: "🏦", color: "#374151", type: "expense" },
+      { name: "Investimentos", icon: "📊", color: "#059669", type: "expense" },
+      { name: "Doações", icon: "❤️", color: "#EC4899", type: "expense" },
+      { name: "Outros", icon: "📦", color: "#84CC16", type: "expense" },
+    ];
+
+    // Default subscription categories
+    const subscriptionCategories: InsertCategory[] = [
+      { name: "Streaming", icon: "📺", color: "#DC2626", type: "subscription" },
+      { name: "Música", icon: "🎵", color: "#059669", type: "subscription" },
+      { name: "Jogos", icon: "🎮", color: "#7C3AED", type: "subscription" },
+      { name: "Produtividade", icon: "💼", color: "#2563EB", type: "subscription" },
+      { name: "Armazenamento", icon: "☁️", color: "#0891B2", type: "subscription" },
+      { name: "Software", icon: "💻", color: "#6B7280", type: "subscription" },
+      { name: "Notícias", icon: "📰", color: "#92400E", type: "subscription" },
+      { name: "Fitness", icon: "🏃‍♀️", color: "#F59E0B", type: "subscription" },
+      { name: "Educação", icon: "🎓", color: "#8B5CF6", type: "subscription" },
+      { name: "Delivery", icon: "🚚", color: "#EF4444", type: "subscription" },
+      { name: "Design", icon: "🎨", color: "#EC4899", type: "subscription" },
+      { name: "Outros", icon: "📱", color: "#84CC16", type: "subscription" },
+    ];
+
+    [...incomeCategories, ...expenseCategories, ...subscriptionCategories].forEach(cat => {
       const id = randomUUID();
       this.categories.set(id, { ...cat, id });
     });

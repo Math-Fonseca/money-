@@ -1,57 +1,51 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import type { Category } from "@shared/schema";
 
-// Form schema para categorias
 const categoryFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   icon: z.string().min(1, "Ícone é obrigatório"),
   color: z.string().min(1, "Cor é obrigatória"),
-  type: z.string().min(1, "Tipo é obrigatório"),
+  type: z.enum(["income", "expense", "subscription"], { required_error: "Tipo é obrigatório" }),
 });
 
 type CategoryFormData = z.infer<typeof categoryFormSchema>;
 
-// Ícones disponíveis
-const incomeIcons = [
-  "💰", "💵", "💸", "🏦", "💎", "🎁", "💳", "🪙", 
-  "📊", "📈", "💹", "🚇", "🍽️", "💻", "🎯", "⚡",
-  "🏢", "👨‍💼", "📝", "🎓", "🏆", "💼", "🔧", "🎨"
+const availableIcons = [
+  "💰", "🍔", "🚗", "🏠", "🏥", "📚", "🎭", "👕", "📄", "📦",
+  "🚇", "🍽️", "💻", "🎁", "💵", "🛒", "⛽", "🚖", "🅿️", "🏘️",
+  "🏦", "🏢", "⚡", "💧", "🔥", "📡", "📞", "💊", "👨‍⚕️", "🦷",
+  "🩺", "💪", "🎓", "📖", "✏️", "🎬", "✈️", "🏨", "🎉", "👞",
+  "💍", "💄", "💇‍♀️", "📱", "🛋️", "🔧", "🐕", "🛡️", "📊", "❤️",
+  "📺", "🎵", "🎮", "💼", "☁️", "📰", "🏃‍♀️", "🚚", "🎨", "📈",
+  "🏪", "👥", "🧾", "🍕", "🍜", "🥗", "☕", "🍺", "🚌", "🚲",
+  "🏬", "🎪", "🎸", "🎯", "🏆", "🎊", "🎂", "🎯", "💝", "🌟"
 ];
 
-const expenseIcons = [
-  "🍔", "🍕", "🛒", "⛽", "🚗", "🏠", "💊", "🎬",
-  "🎮", "📱", "👕", "✈️", "🏥", "📚", "🎵", "💄",
-  "🐕", "🌿", "🔧", "🎯", "📦", "🚇", "🚌", "🧽"
+const availableColors = [
+  "#EF4444", "#F59E0B", "#10B981", "#2563EB", "#8B5CF6", "#EC4899",
+  "#06B6D4", "#84CC16", "#6B7280", "#DC2626", "#059669", "#7C3AED",
+  "#0891B2", "#CA8A04", "#92400E", "#374151", "#FCD34D", "#A855F7"
 ];
 
-interface Category {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  type: string;
-}
-
-export default function CategoryManager() {
+export function CategoryManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: categories = [] } = useQuery<Category[]>({
+  const { data: categories = [], isLoading } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
 
@@ -60,7 +54,7 @@ export default function CategoryManager() {
     defaultValues: {
       name: "",
       icon: "",
-      color: "#3B82F6",
+      color: "",
       type: "expense",
     },
   });
@@ -75,20 +69,7 @@ export default function CategoryManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
-      setIsDialogOpen(false);
-      setEditingCategory(null);
-      form.reset();
-      toast({
-        title: editingCategory ? "Categoria atualizada!" : "Categoria criada!",
-        description: editingCategory ? "Categoria atualizada com sucesso." : "Nova categoria adicionada com sucesso.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao salvar a categoria.",
-        variant: "destructive",
-      });
+      closeDialog();
     },
   });
 
@@ -96,70 +77,58 @@ export default function CategoryManager() {
     mutationFn: (id: string) => apiRequest("DELETE", `/api/categories/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
-      toast({
-        title: "Categoria removida",
-        description: "Categoria removida com sucesso.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao remover a categoria.",
-        variant: "destructive",
-      });
     },
   });
 
-  const onSubmit = (data: CategoryFormData) => {
-    createCategoryMutation.mutate(data);
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+    setEditingCategory(null);
+    form.reset();
   };
 
-  const handleEdit = (category: Category) => {
+  const openEditDialog = (category: Category) => {
     setEditingCategory(category);
     form.reset({
       name: category.name,
       icon: category.icon,
       color: category.color,
-      type: category.type,
+      type: category.type as "income" | "expense" | "subscription",
     });
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita.")) {
-      deleteCategoryMutation.mutate(id);
-    }
+  const onSubmit = (data: CategoryFormData) => {
+    createCategoryMutation.mutate(data);
   };
 
-  const selectedType = form.watch("type");
-  const availableIcons = selectedType === "income" ? incomeIcons : expenseIcons;
+  if (isLoading) {
+    return <div className="text-center py-8">Carregando categorias...</div>;
+  }
+
+  const incomeCategories = categories.filter((cat: Category) => cat.type === "income");
+  const expenseCategories = categories.filter((cat: Category) => cat.type === "expense");
+  const subscriptionCategories = categories.filter((cat: Category) => cat.type === "subscription");
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Categorias</h2>
-          <p className="text-gray-600">Gerencie suas categorias de receitas e despesas</p>
-        </div>
-
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            setEditingCategory(null);
-            form.reset();
-          }
-        }}>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Gerenciar Categorias</h2>
+        
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               Nova Categoria
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px]" aria-describedby="category-dialog-description">
             <DialogHeader>
               <DialogTitle>
-                {editingCategory ? "Editar Categoria" : "Criar Nova Categoria"}
+                {editingCategory ? "Editar Categoria" : "Nova Categoria"}
               </DialogTitle>
+              <p id="category-dialog-description" className="text-sm text-gray-600">
+                {editingCategory ? "Edite os dados da categoria" : "Crie uma nova categoria para organizar suas transações"}
+              </p>
             </DialogHeader>
             
             <Form {...form}>
@@ -184,7 +153,7 @@ export default function CategoryManager() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione o tipo" />
@@ -193,6 +162,7 @@ export default function CategoryManager() {
                         <SelectContent>
                           <SelectItem value="income">Receita</SelectItem>
                           <SelectItem value="expense">Despesa</SelectItem>
+                          <SelectItem value="subscription">Assinatura</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -200,52 +170,57 @@ export default function CategoryManager() {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="icon"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ícone</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um ícone" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {availableIcons.map((icon) => (
-                              <SelectItem key={icon} value={icon}>
-                                <span className="text-lg">{icon}</span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="icon"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ícone</FormLabel>
+                      <div className="grid grid-cols-10 gap-2 p-3 border rounded-md max-h-40 overflow-y-auto">
+                        {availableIcons.map((icon) => (
+                          <button
+                            key={icon}
+                            type="button"
+                            className={`text-2xl p-2 rounded hover:bg-gray-100 ${
+                              field.value === icon ? "bg-blue-100 border-2 border-blue-500" : ""
+                            }`}
+                            onClick={() => field.onChange(icon)}
+                          >
+                            {icon}
+                          </button>
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="color"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cor</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="color"
-                            {...field}
+                <FormField
+                  control={form.control}
+                  name="color"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cor</FormLabel>
+                      <div className="grid grid-cols-9 gap-2 p-3 border rounded-md">
+                        {availableColors.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            className={`w-8 h-8 rounded-full border-2 ${
+                              field.value === color ? "border-gray-800 scale-110" : "border-gray-300"
+                            }`}
+                            style={{ backgroundColor: color }}
+                            onClick={() => field.onChange(color)}
                           />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="flex justify-end gap-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button type="button" variant="outline" onClick={closeDialog}>
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={createCategoryMutation.isPending}>
@@ -258,59 +233,125 @@ export default function CategoryManager() {
         </Dialog>
       </div>
 
-      {/* Categories List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((category) => (
-          <Card key={category.id} className="relative">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: category.color + "20" }}
-                  >
+      {/* Categorias de Receita */}
+      <div>
+        <h3 className="text-lg font-semibold mb-3 text-green-600">📈 Categorias de Receita</h3>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {incomeCategories.map((category) => (
+            <Card key={category.id} className="relative overflow-hidden">
+              <div 
+                className="absolute top-0 left-0 w-full h-1"
+                style={{ backgroundColor: category.color }}
+              />
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
                     <span className="text-lg">{category.icon}</span>
+                    <CardTitle className="text-sm">{category.name}</CardTitle>
                   </div>
-                  <div>
-                    <CardTitle className="text-base">{category.name}</CardTitle>
-                    <CardDescription className="text-xs">
-                      {category.type === "income" ? "Receita" : "Despesa"}
-                    </CardDescription>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditDialog(category)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteCategoryMutation.mutate(category.id)}
+                      disabled={deleteCategoryMutation.isPending}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(category)}
-                    className="h-6 w-6 p-0"
-                  >
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(category.id)}
-                    className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-        ))}
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
       </div>
 
-      {categories.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">Nenhuma categoria encontrada</p>
-          <Button onClick={() => setIsDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Criar primeira categoria
-          </Button>
+      {/* Categorias de Despesa */}
+      <div>
+        <h3 className="text-lg font-semibold mb-3 text-red-600">📉 Categorias de Despesa</h3>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {expenseCategories.map((category) => (
+            <Card key={category.id} className="relative overflow-hidden">
+              <div 
+                className="absolute top-0 left-0 w-full h-1"
+                style={{ backgroundColor: category.color }}
+              />
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{category.icon}</span>
+                    <CardTitle className="text-sm">{category.name}</CardTitle>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditDialog(category)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteCategoryMutation.mutate(category.id)}
+                      disabled={deleteCategoryMutation.isPending}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
         </div>
-      )}
+      </div>
+
+      {/* Categorias de Assinatura */}
+      <div>
+        <h3 className="text-lg font-semibold mb-3 text-purple-600">📱 Categorias de Assinatura</h3>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {subscriptionCategories.map((category) => (
+            <Card key={category.id} className="relative overflow-hidden">
+              <div 
+                className="absolute top-0 left-0 w-full h-1"
+                style={{ backgroundColor: category.color }}
+              />
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{category.icon}</span>
+                    <CardTitle className="text-sm">{category.name}</CardTitle>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditDialog(category)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteCategoryMutation.mutate(category.id)}
+                      disabled={deleteCategoryMutation.isPending}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

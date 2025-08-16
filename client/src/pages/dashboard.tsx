@@ -7,10 +7,10 @@ import TransactionHistory from "@/components/transaction-history";
 import HistoryFilters from "@/components/history-filters";
 import Charts from "@/components/charts";
 import MonthSelector from "@/components/month-selector";
-import CategoryManager from "@/components/category-manager";
 import SettingsManager from "@/components/settings-manager";
 import CreditCardManager from "@/components/credit-card-manager";
 import SubscriptionManager from "@/components/subscription-manager";
+import { CategoryManager } from "@/components/category-manager";
 import UserProfile from "@/components/user-profile";
 import { useQuery } from "@tanstack/react-query";
 

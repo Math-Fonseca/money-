@@ -8,7 +8,7 @@ export const categories = pgTable("categories", {
   name: text("name").notNull(),
   icon: text("icon").notNull(),
   color: text("color").notNull(),
-  type: text("type").notNull(), // 'income' or 'expense'
+  type: text("type").notNull(), // 'income' | 'expense' | 'subscription'
 });
 
 export const transactions = pgTable("transactions", {
