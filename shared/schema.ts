@@ -64,6 +64,8 @@ export const subscriptions = pgTable("subscriptions", {
   billingDate: integer("billing_date").notNull(), // day of month
   isActive: boolean("is_active").default(true),
   categoryId: varchar("category_id").references(() => categories.id),
+  paymentMethod: text("payment_method").notNull(), // 'dinheiro', 'debito', 'credito', 'pix', 'transferencia'
+  creditCardId: varchar("credit_card_id").references(() => creditCards.id), // for credit card subscriptions
   createdAt: timestamp("created_at").defaultNow(),
 });
 

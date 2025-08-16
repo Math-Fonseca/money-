@@ -292,26 +292,6 @@ export class MemStorage implements IStorage {
     let deleted = false;
     
     // Delete the parent transaction (first installment)
-    if (this.transactions.delete(parentId)) {
-      deleted = true;
-    }
-    
-    // Delete all installment instances (children)
-    const transactionEntries = Array.from(this.transactions.entries());
-    for (const [id, transaction] of transactionEntries) {
-      if (transaction.parentTransactionId === parentId) {
-        this.transactions.delete(id);
-        deleted = true;
-      }
-    }
-    
-    return deleted;
-  }
-
-  async deleteInstallmentTransactions(parentId: string): Promise<boolean> {
-    let deleted = false;
-    
-    // Delete the parent transaction (first installment)
     const parentTransaction = this.transactions.get(parentId);
     if (parentTransaction && (parentTransaction.installments || 0) > 1) {
       
@@ -462,9 +442,24 @@ export class MemStorage implements IStorage {
       ...subscription, 
       id,
       categoryId: subscription.categoryId || null,
-      isActive: true,
+      isActive: subscription.isActive !== false,
       createdAt: new Date()
     };
+    
+    // Se é uma assinatura paga no cartão de crédito, atualizar o limite usado
+    if (subscription.paymentMethod === 'credito' && subscription.creditCardId && newSubscription.isActive) {
+      const creditCard = await this.getCreditCardById(subscription.creditCardId);
+      if (creditCard) {
+        const currentUsed = parseFloat(creditCard.currentUsed || "0");
+        const subscriptionAmount = parseFloat(subscription.amount);
+        const newCurrentUsed = currentUsed + subscriptionAmount;
+        
+        await this.updateCreditCard(subscription.creditCardId, {
+          currentUsed: newCurrentUsed.toFixed(2)
+        });
+      }
+    }
+    
     this.subscriptions.set(id, newSubscription);
     return newSubscription;
   }
@@ -473,12 +468,57 @@ export class MemStorage implements IStorage {
     const existing = this.subscriptions.get(id);
     if (!existing) return undefined;
     
+    // Handle credit card limit adjustments when subscription status changes
+    if (existing.paymentMethod === 'credito' && existing.creditCardId) {
+      const wasActive = existing.isActive;
+      const willBeActive = subscription.isActive !== undefined ? subscription.isActive : existing.isActive;
+      
+      if (wasActive !== willBeActive) {
+        const creditCard = await this.getCreditCardById(existing.creditCardId);
+        if (creditCard) {
+          const currentUsed = parseFloat(creditCard.currentUsed || "0");
+          const subscriptionAmount = parseFloat(existing.amount);
+          
+          let newCurrentUsed;
+          if (willBeActive && !wasActive) {
+            // Activating subscription - add to limit usage
+            newCurrentUsed = currentUsed + subscriptionAmount;
+          } else if (!willBeActive && wasActive) {
+            // Deactivating subscription - remove from limit usage
+            newCurrentUsed = Math.max(0, currentUsed - subscriptionAmount);
+          } else {
+            newCurrentUsed = currentUsed;
+          }
+          
+          await this.updateCreditCard(existing.creditCardId, {
+            currentUsed: newCurrentUsed.toFixed(2)
+          });
+        }
+      }
+    }
+    
     const updated: Subscription = { ...existing, ...subscription };
     this.subscriptions.set(id, updated);
     return updated;
   }
 
   async deleteSubscription(id: string): Promise<boolean> {
+    const subscription = this.subscriptions.get(id);
+    
+    // Se é uma assinatura ativa paga no cartão de crédito, liberar o limite
+    if (subscription && subscription.paymentMethod === 'credito' && subscription.creditCardId && subscription.isActive) {
+      const creditCard = await this.getCreditCardById(subscription.creditCardId);
+      if (creditCard) {
+        const currentUsed = parseFloat(creditCard.currentUsed || "0");
+        const subscriptionAmount = parseFloat(subscription.amount);
+        const newCurrentUsed = Math.max(0, currentUsed - subscriptionAmount);
+        
+        await this.updateCreditCard(subscription.creditCardId, {
+          currentUsed: newCurrentUsed.toFixed(2)
+        });
+      }
+    }
+    
     return this.subscriptions.delete(id);
   }
 

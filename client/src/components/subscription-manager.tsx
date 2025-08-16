@@ -22,6 +22,17 @@ const subscriptionFormSchema = z.object({
   amount: z.string().min(1, "Valor é obrigatório"),
   billingDate: z.coerce.number().min(1).max(31),
   categoryId: z.string().optional(),
+  paymentMethod: z.string().min(1, "Método de pagamento é obrigatório"),
+  creditCardId: z.string().optional(),
+}).refine((data) => {
+  // Se método é crédito, cartão é obrigatório
+  if (data.paymentMethod === 'credito' && !data.creditCardId) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Cartão de crédito é obrigatório para pagamento via crédito",
+  path: ["creditCardId"],
 });
 
 type SubscriptionFormData = z.infer<typeof subscriptionFormSchema>;
@@ -58,7 +69,19 @@ interface Subscription {
   billingDate: number;
   isActive: boolean;
   categoryId?: string;
+  paymentMethod: string;
+  creditCardId?: string;
   createdAt: string;
+}
+
+interface CreditCard {
+  id: string;
+  name: string;
+  brand: string;
+  bank: string;
+  limit: string;
+  currentUsed: string;
+  color: string;
 }
 
 interface Category {
@@ -82,6 +105,10 @@ export default function SubscriptionManager() {
     queryKey: ["/api/categories"],
   });
 
+  const { data: creditCards = [] } = useQuery<CreditCard[]>({
+    queryKey: ["/api/credit-cards"],
+  });
+
   const form = useForm<SubscriptionFormData>({
     resolver: zodResolver(subscriptionFormSchema),
     defaultValues: {
@@ -90,6 +117,8 @@ export default function SubscriptionManager() {
       amount: "",
       billingDate: 1,
       categoryId: "",
+      paymentMethod: "",
+      creditCardId: "",
     },
   });
 
@@ -103,6 +132,7 @@ export default function SubscriptionManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       setIsDialogOpen(false);
       form.reset();
       toast({
@@ -124,6 +154,7 @@ export default function SubscriptionManager() {
       apiRequest("PUT", `/api/subscriptions/${id}`, { isActive }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       toast({
         title: "Assinatura atualizada",
         description: "Status da assinatura foi alterado.",
@@ -142,6 +173,7 @@ export default function SubscriptionManager() {
     mutationFn: (id: string) => apiRequest("DELETE", `/api/subscriptions/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       toast({
         title: "Assinatura removida",
         description: "Assinatura removida com sucesso.",
@@ -179,6 +211,17 @@ export default function SubscriptionManager() {
     return subscriptions
       .filter(sub => sub.isActive)
       .reduce((total, sub) => total + parseFloat(sub.amount), 0);
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    const methods: Record<string, string> = {
+      dinheiro: "💵 Dinheiro",
+      debito: "💳 Débito",
+      credito: "💎 Crédito",
+      pix: "📱 PIX",
+      transferencia: "🏦 Transferência",
+    };
+    return methods[method] || "Não informado";
   };
 
   const getNextBillingDate = (billingDate: number) => {
@@ -297,6 +340,61 @@ export default function SubscriptionManager() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Método de Pagamento</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o método" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="dinheiro">💵 Dinheiro</SelectItem>
+                          <SelectItem value="debito">💳 Débito</SelectItem>
+                          <SelectItem value="credito">💎 Crédito</SelectItem>
+                          <SelectItem value="pix">📱 PIX</SelectItem>
+                          <SelectItem value="transferencia">🏦 Transferência</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch("paymentMethod") === "credito" && (
+                  <FormField
+                    control={form.control}
+                    name="creditCardId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cartão de Crédito</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o cartão" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {creditCards.map((card) => (
+                              <SelectItem key={card.id} value={card.id}>
+                                <div className="flex items-center gap-2">
+                                  <span>💳</span>
+                                  {card.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}
@@ -450,6 +548,13 @@ export default function SubscriptionManager() {
                             <span className="text-sm text-gray-600">Próxima cobrança</span>
                             <span className="text-sm font-medium">
                               {getNextBillingDate(subscription.billingDate)}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Pagamento</span>
+                            <span className="text-sm font-medium">
+                              {getPaymentMethodLabel(subscription.paymentMethod)}
                             </span>
                           </div>
 
