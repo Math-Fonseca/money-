@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import TransactionEditModal from "./transaction-edit-modal";
 import RecurringDeleteModal from "./recurring-delete-modal";
+import InstallmentDeleteModal from "./installment-delete-modal";
 
 interface Transaction {
   id: string;
@@ -18,6 +19,10 @@ interface Transaction {
   type: 'income' | 'expense';
   categoryId?: string;
   paymentMethod?: string;
+  installments?: number;
+  installmentNumber?: number;
+  parentTransactionId?: string;
+  isRecurring?: boolean;
 }
 
 interface Category {
@@ -47,6 +52,8 @@ export default function TransactionHistory({
   });
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  const [showRecurringDeleteModal, setShowRecurringDeleteModal] = useState(false);
+  const [showInstallmentDeleteModal, setShowInstallmentDeleteModal] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -267,7 +274,20 @@ export default function TransactionHistory({
                       variant="ghost" 
                       size="sm" 
                       className="text-gray-400 hover:text-red-600"
-                      onClick={() => setDeletingTransaction(transaction)}
+                      onClick={() => {
+                        const isRecurring = transaction.isRecurring || transaction.parentTransactionId;
+                        const isInstallment = transaction.installments && transaction.installments > 1;
+                        
+                        if (isRecurring) {
+                          setDeletingTransaction(transaction);
+                          setShowRecurringDeleteModal(true);
+                        } else if (isInstallment) {
+                          setDeletingTransaction(transaction);
+                          setShowInstallmentDeleteModal(true);
+                        } else {
+                          setDeletingTransaction(transaction);
+                        }
+                      }}
                     >
                       🗑️
                     </Button>
@@ -281,6 +301,7 @@ export default function TransactionHistory({
         </div>
       </div>
 
+      {/* Modals */}
       <TransactionEditModal
         transaction={editingTransaction}
         categories={categories}
@@ -288,11 +309,52 @@ export default function TransactionHistory({
         onClose={() => setEditingTransaction(null)}
       />
 
+      {/* Recurring Delete Modal */}
       <RecurringDeleteModal
         transaction={deletingTransaction}
-        isOpen={!!deletingTransaction}
-        onClose={() => setDeletingTransaction(null)}
+        isOpen={showRecurringDeleteModal}
+        onClose={() => {
+          setShowRecurringDeleteModal(false);
+          setDeletingTransaction(null);
+        }}
       />
+
+      {/* Installment Delete Modal */}
+      <InstallmentDeleteModal
+        transaction={deletingTransaction}
+        isOpen={showInstallmentDeleteModal}
+        onClose={() => {
+          setShowInstallmentDeleteModal(false);
+          setDeletingTransaction(null);
+        }}
+      />
+
+      {/* Simple Delete Confirmation Dialog for regular transactions */}
+      <AlertDialog open={!!deletingTransaction && !showRecurringDeleteModal && !showInstallmentDeleteModal} onOpenChange={() => setDeletingTransaction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a transação "{deletingTransaction?.description}"?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                if (deletingTransaction) {
+                  deleteTransactionMutation.mutate(deletingTransaction.id);
+                  setDeletingTransaction(null);
+                }
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

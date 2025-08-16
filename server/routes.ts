@@ -197,6 +197,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }));
         }
         
+        // Para parcelamentos, atualizamos o limite usado apenas no momento de cada parcela (não todas de uma vez)
+        // A primeira parcela já foi criada, então atualizamos o limite apenas com o valor da primeira parcela
+        if (parentTransaction.creditCardId && parentTransaction.type === 'expense') {
+          const creditCard = await storage.getCreditCardById(parentTransaction.creditCardId);
+          if (creditCard) {
+            const currentUsed = parseFloat(creditCard.currentUsed || "0");
+            const newCurrentUsed = currentUsed + installmentAmount;
+            
+            await storage.updateCreditCard(parentTransaction.creditCardId, {
+              currentUsed: newCurrentUsed.toFixed(2)
+            });
+          }
+        }
+        
         await Promise.all(promises);
         
         // Update parent transaction amount to be the installment amount
@@ -257,11 +271,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/transactions/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Buscar a transação antes de deletar para verificar se é de cartão de crédito
+      const transaction = await storage.getTransactionById(id);
+      if (!transaction) {
+        res.status(404).json({ message: "Transaction not found" });
+        return;
+      }
+      
       const deleted = await storage.deleteTransaction(id);
       
       if (!deleted) {
         res.status(404).json({ message: "Transaction not found" });
         return;
+      }
+      
+      // Se foi uma transação de cartão de crédito, reduzir o limite usado
+      if (transaction.creditCardId && transaction.type === 'expense') {
+        const creditCard = await storage.getCreditCardById(transaction.creditCardId);
+        if (creditCard) {
+          const currentUsed = parseFloat(creditCard.currentUsed || "0");
+          const transactionAmount = parseFloat(transaction.amount);
+          const newCurrentUsed = Math.max(0, currentUsed - transactionAmount);
+          
+          await storage.updateCreditCard(transaction.creditCardId, {
+            currentUsed: newCurrentUsed.toFixed(2)
+          });
+        }
       }
       
       res.status(204).send();
@@ -284,6 +320,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete recurring transactions" });
+    }
+  });
+
+  // Delete all installment transactions by parent ID (including parent)
+  app.delete("/api/transactions/installments/:parentId", async (req, res) => {
+    try {
+      const { parentId } = req.params;
+      
+      // Buscar todas as parcelas (incluindo a principal) para calcular o total a ser removido do limite
+      const transactions = await storage.getTransactions();
+      const installmentTransactions = transactions.filter(t => 
+        t.id === parentId || t.parentTransactionId === parentId
+      );
+      
+      if (installmentTransactions.length === 0) {
+        res.status(404).json({ message: "Installment transactions not found" });
+        return;
+      }
+      
+      // Calcular total para remover do limite do cartão
+      const creditCardTransaction = installmentTransactions.find(t => t.creditCardId);
+      if (creditCardTransaction && creditCardTransaction.type === 'expense' && creditCardTransaction.creditCardId) {
+        const totalAmount = installmentTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const creditCard = await storage.getCreditCardById(creditCardTransaction.creditCardId);
+        
+        if (creditCard) {
+          const currentUsed = parseFloat(creditCard.currentUsed || "0");
+          const newCurrentUsed = Math.max(0, currentUsed - totalAmount);
+          
+          await storage.updateCreditCard(creditCardTransaction.creditCardId, {
+            currentUsed: newCurrentUsed.toFixed(2)
+          });
+        }
+      }
+      
+      // Deletar todas as parcelas
+      for (const transaction of installmentTransactions) {
+        await storage.deleteTransaction(transaction.id);
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting installment transactions:", error);
+      res.status(500).json({ message: "Failed to delete installment transactions" });
     }
   });
 
