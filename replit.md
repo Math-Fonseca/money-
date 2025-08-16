@@ -104,11 +104,19 @@ UI Language: Portuguese (Brazilian).
 ## Recurring Transactions
 - Automatic propagation of recurring income/expenses to future months (24 months ahead)
 - Recurring transactions linked via parentTransactionId for tracking
+- Smart editing system: option to edit "apenas esta" or "todas as recorrentes"
+- Smart deletion system: option to delete single or all recurring transactions
 
 ## Profile Management
 - Object storage configured for future real file uploads
-- Profile photo upload functional with file selection and preview update
-- Avatar generation using DiceBear API as placeholder
+- Advanced photo editor with manual crop positioning to prevent distortion
+- Interactive crop tool with drag-and-drop positioning
+- White background support to prevent dark/transparent images
+
+## Transaction Management
+- Complete transaction editing modal with form validation
+- Recurring transaction detection and specialized editing options
+- Full CRUD operations for all transaction types
 
 ## Year Support
 - System supports unlimited years (not restricted to 2024-2026)
