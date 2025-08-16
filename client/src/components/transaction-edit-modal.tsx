@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import RecurringEditModal from "./recurring-edit-modal";
+import InstallmentEditModal from "./installment-edit-modal";
 
 const editTransactionSchema = z.object({
   description: z.string().min(1, "Descrição é obrigatória"),
@@ -58,6 +59,7 @@ export default function TransactionEditModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showRecurringModal, setShowRecurringModal] = useState(false);
+  const [showInstallmentModal, setShowInstallmentModal] = useState(false);
   const [pendingEditData, setPendingEditData] = useState<any>(null);
 
   const form = useForm<EditTransactionFormData>({
@@ -104,10 +106,16 @@ export default function TransactionEditModal({
       type: transaction?.type,
     };
     
-    // Check if transaction is recurring
-    const isRecurring = (transaction as any)?.isRecurring || (transaction as any)?.parentTransactionId;
+    // Check if transaction is an installment (first or subsequent)
+    const isInstallment = (transaction as any)?.installments > 1 || (transaction as any)?.parentTransactionId;
     
-    if (isRecurring) {
+    // Check if transaction is recurring (but not installment)
+    const isRecurring = ((transaction as any)?.isRecurring || (transaction as any)?.parentTransactionId) && !isInstallment;
+    
+    if (isInstallment) {
+      setPendingEditData(editData);
+      setShowInstallmentModal(true);
+    } else if (isRecurring) {
       setPendingEditData(editData);
       setShowRecurringModal(true);
     } else {
@@ -264,6 +272,24 @@ export default function TransactionEditModal({
         }}
         onEditAll={() => {
           // This will be handled by the RecurringEditModal itself
+        }}
+      />
+    )}
+
+    {showInstallmentModal && (
+      <InstallmentEditModal
+        transaction={transaction}
+        editData={pendingEditData}
+        isOpen={showInstallmentModal}
+        onClose={() => {
+          setShowInstallmentModal(false);
+          setPendingEditData(null);
+        }}
+        onEditSingle={() => {
+          updateTransactionMutation.mutate(pendingEditData);
+        }}
+        onEditAll={() => {
+          // This will be handled by the InstallmentEditModal itself
         }}
       />
     )}

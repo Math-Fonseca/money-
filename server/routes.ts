@@ -84,7 +84,8 @@ import {
   insertCategorySchema, 
   insertBudgetSchema, 
   insertCreditCardSchema,
-  insertSubscriptionSchema 
+  insertSubscriptionSchema,
+  type Transaction
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -434,6 +435,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ message: "Invalid transaction data", errors: error.errors });
       } else {
         res.status(500).json({ message: "Failed to update recurring transactions" });
+      }
+    }
+  });
+
+  // Update all installment transactions by parent ID
+  app.put("/api/transactions/installments/:parentId", async (req, res) => {
+    try {
+      const { parentId } = req.params;
+      const transactionData = insertTransactionSchema.partial().parse(req.body);
+      
+      // Get all installment transactions (parent + children)
+      const installmentTransactions = await storage.getInstallmentTransactions(parentId);
+      
+      if (!installmentTransactions || installmentTransactions.length === 0) {
+        res.status(404).json({ message: "Installment transactions not found" });
+        return;
+      }
+
+      // Handle proportional amount updates
+      if ((transactionData as any).proportionalAmount && transactionData.amount) {
+        const newAmount = parseFloat(transactionData.amount);
+        
+        // Get the current parent transaction to calculate the total change
+        const parentTransaction = installmentTransactions.find((t: Transaction) => t.id === parentId);
+        if (!parentTransaction) {
+          res.status(404).json({ message: "Parent transaction not found" });
+          return;
+        }
+
+        const oldParentAmount = parseFloat(parentTransaction.amount);
+        const totalOldAmount = oldParentAmount * installmentTransactions.length;
+        const totalNewAmount = newAmount * installmentTransactions.length;
+        
+        // Update credit card limit if this is a credit transaction
+        if (parentTransaction.creditCardId && parentTransaction.type === 'expense') {
+          const creditCard = await storage.getCreditCardById(parentTransaction.creditCardId);
+          if (creditCard) {
+            const currentUsed = parseFloat(creditCard.currentUsed || "0");
+            const limitAdjustment = totalNewAmount - totalOldAmount;
+            const newCurrentUsed = currentUsed + limitAdjustment;
+            
+            // Check if new amount exceeds limit
+            const cardLimit = parseFloat(creditCard.limit);
+            if (newCurrentUsed > cardLimit) {
+              const availableLimit = cardLimit - (currentUsed - totalOldAmount);
+              return res.status(400).json({ 
+                message: "Limite do cartão insuficiente para a alteração", 
+                error: `Limite disponível: R$ ${availableLimit.toFixed(2)}. Valor total das parcelas: R$ ${totalNewAmount.toFixed(2)}` 
+              });
+            }
+            
+            await storage.updateCreditCard(parentTransaction.creditCardId, {
+              currentUsed: newCurrentUsed.toFixed(2)
+            });
+          }
+        }
+
+        // Update all installments with the new amount
+        const updatePromises = installmentTransactions.map((transaction: Transaction) => {
+          const { proportionalAmount, ...cleanTransactionData } = transactionData as any;
+          return storage.updateTransaction(transaction.id, {
+            ...cleanTransactionData,
+            amount: newAmount.toFixed(2)
+          });
+        });
+        
+        await Promise.all(updatePromises);
+      } else {
+        // Regular update for all installments
+        const updatePromises = installmentTransactions.map((transaction: Transaction) => 
+          storage.updateTransaction(transaction.id, transactionData)
+        );
+        
+        await Promise.all(updatePromises);
+      }
+      
+      res.status(200).json({ message: "Installment transactions updated successfully" });
+    } catch (error) {
+      console.error("Error updating installment transactions:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid transaction data", errors: error.errors });
+      } else {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        res.status(500).json({ message: "Failed to update installment transactions", error: errorMessage });
       }
     }
   });

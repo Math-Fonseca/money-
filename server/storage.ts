@@ -34,6 +34,8 @@ export interface IStorage {
   deleteTransaction(id: string): Promise<boolean>;
   deleteRecurringTransactions(parentId: string): Promise<boolean>;
   updateRecurringTransactions(parentId: string, transaction: Partial<InsertTransaction>): Promise<boolean>;
+  getInstallmentTransactions(parentId: string): Promise<Transaction[]>;
+  deleteInstallmentTransactions(parentId: string): Promise<boolean>;
 
   // Budgets
   getBudgets(): Promise<Budget[]>;
@@ -263,6 +265,67 @@ export class MemStorage implements IStorage {
     }
     
     return updated;
+  }
+
+  async getInstallmentTransactions(parentId: string): Promise<Transaction[]> {
+    const transactions: Transaction[] = [];
+    
+    // Get the parent transaction (first installment)
+    const parentTransaction = this.transactions.get(parentId);
+    if (parentTransaction && (parentTransaction.installments || 0) > 1) {
+      transactions.push(parentTransaction);
+    }
+    
+    // Get all child transactions (subsequent installments)
+    const transactionEntries = Array.from(this.transactions.entries());
+    for (const [id, transaction] of transactionEntries) {
+      if (transaction.parentTransactionId === parentId) {
+        transactions.push(transaction);
+      }
+    }
+    
+    // Sort by installment number to maintain order
+    return transactions.sort((a, b) => (a.installmentNumber || 0) - (b.installmentNumber || 0));
+  }
+
+  async deleteInstallmentTransactions(parentId: string): Promise<boolean> {
+    let deleted = false;
+    
+    // Delete the parent transaction (first installment)
+    const parentTransaction = this.transactions.get(parentId);
+    if (parentTransaction && (parentTransaction.installments || 0) > 1) {
+      
+      // If this is a credit card transaction, adjust the limit
+      if (parentTransaction.creditCardId && parentTransaction.type === 'expense') {
+        const creditCard = await this.getCreditCardById(parentTransaction.creditCardId);
+        if (creditCard) {
+          const currentUsed = parseFloat(creditCard.currentUsed || "0");
+          
+          // For installments, calculate the total amount to release
+          const installmentTransactions = await this.getInstallmentTransactions(parentId);
+          const totalAmount = installmentTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+          
+          const newCurrentUsed = Math.max(0, currentUsed - totalAmount);
+          await this.updateCreditCard(parentTransaction.creditCardId, {
+            currentUsed: newCurrentUsed.toFixed(2)
+          });
+        }
+      }
+      
+      this.transactions.delete(parentId);
+      deleted = true;
+    }
+    
+    // Delete all child transactions (subsequent installments)
+    const transactionEntries = Array.from(this.transactions.entries());
+    for (const [id, transaction] of transactionEntries) {
+      if (transaction.parentTransactionId === parentId) {
+        this.transactions.delete(id);
+        deleted = true;
+      }
+    }
+    
+    return deleted;
   }
 
   // Budgets
