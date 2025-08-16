@@ -443,6 +443,7 @@ export class MemStorage implements IStorage {
       id,
       categoryId: subscription.categoryId || null,
       isActive: subscription.isActive !== false,
+      creditCardId: subscription.creditCardId || null,
       createdAt: new Date()
     };
     

@@ -602,13 +602,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Include salary, VT and VR in total income
       const totalIncome = transactionIncome + monthlySalary + monthlyVT + monthlyVR;
       
-      const totalExpenses = transactions
+      // Calcular despesas das transações
+      const transactionExpenses = transactions
         .filter(t => t.type === 'expense')
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
       
+      // Calcular despesas das assinaturas ativas no mês
+      const subscriptions = await storage.getActiveSubscriptions();
+      const subscriptionExpenses = subscriptions.reduce((sum, sub) => {
+        return sum + parseFloat(sub.amount);
+      }, 0);
+      
+      const totalExpenses = transactionExpenses + subscriptionExpenses;
+      
       const currentBalance = totalIncome - totalExpenses;
       
-      // Calculate expenses by category
+      // Calculate expenses by category (incluindo assinaturas)
       const expensesByCategory = transactions
         .filter(t => t.type === 'expense')
         .reduce((acc: Record<string, number>, t) => {
@@ -617,6 +626,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           return acc;
         }, {});
+      
+      // Adicionar assinaturas às categorias
+      subscriptions.forEach(sub => {
+        if (sub.categoryId) {
+          expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
+        }
+      });
       
       res.json({
         totalIncome,
@@ -627,6 +643,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         monthlyVT,
         monthlyVR,
         transactionIncome,
+        transactionExpenses,
+        subscriptionExpenses,
+        activeSubscriptions: subscriptions.length,
         transactions: transactions.slice(0, 10), // Recent transactions
       });
     } catch (error) {
@@ -748,7 +767,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         t.date <= endDate
       );
       
-      res.json(cardTransactions);
+      // Buscar assinaturas ativas do cartão
+      const subscriptions = await storage.getActiveSubscriptions();
+      const cardSubscriptions = subscriptions.filter(s => 
+        s.paymentMethod === 'credito' && s.creditCardId === cardId
+      );
+      
+      // Converter assinaturas em transações virtuais para a fatura
+      const subscriptionTransactions = cardSubscriptions.map(sub => {
+        // Calcular a data da próxima cobrança baseada no período da fatura
+        const startDateObj = new Date(startDate);
+        const billingDate = Math.min(sub.billingDate, new Date(startDateObj.getFullYear(), startDateObj.getMonth() + 1, 0).getDate());
+        const transactionDate = new Date(startDateObj.getFullYear(), startDateObj.getMonth(), billingDate);
+        
+        return {
+          id: `subscription-${sub.id}`,
+          description: `${sub.name} (Assinatura)`,
+          amount: sub.amount,
+          date: transactionDate.toISOString().split('T')[0],
+          type: 'expense' as const,
+          categoryId: sub.categoryId,
+          creditCardId: cardId,
+          isSubscription: true,
+          subscriptionId: sub.id,
+          createdAt: sub.createdAt
+        };
+      });
+      
+      // Combinar transações normais com assinaturas
+      const allTransactions = [...cardTransactions, ...subscriptionTransactions]
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      res.json(allTransactions);
     } catch (error) {
       console.error("Erro ao buscar transações do cartão:", error);
       res.status(500).json({ error: "Erro interno do servidor" });
