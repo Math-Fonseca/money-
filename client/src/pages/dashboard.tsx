@@ -4,15 +4,23 @@ import FinancialSummary from "@/components/financial-summary";
 import IncomeForm from "@/components/income-form";
 import ExpenseForm from "@/components/expense-form";
 import TransactionHistory from "@/components/transaction-history";
+import HistoryFilters from "@/components/history-filters";
 import Charts from "@/components/charts";
 import MonthSelector from "@/components/month-selector";
 import CategoryManager from "@/components/category-manager";
 import SettingsManager from "@/components/settings-manager";
 import CreditCardManager from "@/components/credit-card-manager";
 import SubscriptionManager from "@/components/subscription-manager";
+import UserProfile from "@/components/user-profile";
 import { useQuery } from "@tanstack/react-query";
 
-export default function Dashboard() {
+interface DashboardProps {
+  userData: { name: string; email: string; profileImage?: string };
+  onLogout: () => void;
+  onUpdateProfile: (user: { name: string; email: string; profileImage?: string }) => void;
+}
+
+export default function Dashboard({ userData, onLogout, onUpdateProfile }: DashboardProps) {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -24,10 +32,16 @@ export default function Dashboard() {
     expensesByCategory: Record<string, number>;
   }>({
     queryKey: ["/api/financial-summary", selectedMonth, selectedYear],
+    queryFn: async () => {
+      const response = await fetch(`/api/financial-summary?month=${selectedMonth}&year=${selectedYear}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch financial summary');
+      }
+      return response.json();
+    },
     refetchOnWindowFocus: true,
     staleTime: 0,
     gcTime: 0,
-    refetchInterval: 1000, // Atualiza a cada 1 segundo
   });
 
   const { data: categories = [] } = useQuery<Array<{
@@ -38,6 +52,8 @@ export default function Dashboard() {
     type: string;
   }>>({
     queryKey: ["/api/categories"],
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const { data: transactions = [] } = useQuery<Array<{
@@ -49,6 +65,8 @@ export default function Dashboard() {
     categoryId?: string;
   }>>({
     queryKey: ["/api/transactions"],
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const currentDate = new Date().toLocaleDateString('pt-BR', { 
@@ -69,9 +87,11 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600 capitalize">{currentDate}</span>
-              <button className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-                Exportar Dados
-              </button>
+              <UserProfile 
+                userData={userData}
+                onUpdateProfile={onUpdateProfile}
+                onLogout={onLogout}
+              />
             </div>
           </div>
         </div>
@@ -106,8 +126,8 @@ export default function Dashboard() {
               </div>
               <div className="p-6">
                 <TransactionHistory 
-                  transactions={transactions.slice(0, 5)} 
-                  categories={categories}
+                  transactions={(transactions || []).slice(0, 5)} 
+                  categories={categories || []}
                   showFilters={false}
                 />
               </div>
@@ -124,10 +144,9 @@ export default function Dashboard() {
         )}
 
         {activeTab === "history" && (
-          <TransactionHistory 
+          <HistoryFilters 
             transactions={transactions} 
             categories={categories}
-            showFilters={true}
           />
         )}
 

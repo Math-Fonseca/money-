@@ -1,21 +1,27 @@
 # Overview
 
-This is a personal finance management web application built with React and Express.js. The system allows users to track income and expenses, categorize transactions, set budgets, and view financial summaries through an intuitive dashboard interface. The application is designed to be simple, responsive, and free to use, providing essential financial tracking capabilities without payment requirements.
+This is a personal finance management web application built with React and Express.js with complete authentication system. The system allows users to track income and expenses, categorize transactions, set budgets, and view financial summaries through an intuitive dashboard interface. The application features user authentication with login/registration, user profile management with photo upload, advanced transaction filtering, and credit card management. The application is designed to be simple, responsive, and free to use, providing essential financial tracking capabilities without payment requirements.
 
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
+Theme: Green color scheme instead of blue.
+Data export functionality: Removed as requested.
+Authentication: Implemented complete user login/registration system.
+UI Language: Portuguese (Brazilian).
 
 # System Architecture
 
 ## Frontend Architecture
 - **Framework**: React 18 with TypeScript and Vite as the build tool
 - **UI Components**: Shadcn/ui component library built on Radix UI primitives
-- **Styling**: Tailwind CSS with CSS variables for theming
+- **Styling**: Tailwind CSS with green color theme and CSS variables
 - **State Management**: TanStack Query (React Query) for server state management
+- **Authentication**: LocalStorage-based user session management
 - **Form Handling**: React Hook Form with Zod validation
 - **Routing**: Wouter for lightweight client-side routing
 - **Charts**: Chart.js for financial data visualization
+- **File Upload**: Avatar support with automatic image generation
 
 ## Backend Architecture
 - **Framework**: Express.js with TypeScript
@@ -32,8 +38,11 @@ Preferred communication style: Simple, everyday language.
 - **Features**: UUID primary keys, decimal precision for currency, installment tracking
 
 ## Component Architecture
-- **Modular Design**: Separate components for forms, charts, summaries, and navigation
-- **Reusable UI**: Consistent design system with shadcn/ui components
+- **Authentication System**: Complete login/registration flow with user profile management
+- **Advanced Filtering**: Comprehensive transaction history filters with search, period, type, and category filters
+- **User Management**: Profile editing with avatar support and logout functionality
+- **Modular Design**: Separate components for forms, charts, summaries, navigation, and authentication
+- **Reusable UI**: Consistent green-themed design system with shadcn/ui components
 - **Responsive Layout**: Mobile-first design with adaptive navigation
 - **Form Validation**: Zod schemas shared between client and server
 

@@ -21,6 +21,8 @@ export default function Charts({ summary, categories, transactions }: ChartsProp
   const categoryChartRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    if (!summary || !categories || !transactions) return;
+    
     // Dynamically import Chart.js to avoid SSR issues
     import('chart.js/auto').then((Chart) => {
       // Destroy existing charts
