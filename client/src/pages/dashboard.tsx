@@ -12,6 +12,7 @@ import CreditCardManager from "@/components/credit-card-manager";
 import SubscriptionManager from "@/components/subscription-manager";
 import { CategoryManager } from "@/components/category-manager";
 import UserProfile from "@/components/user-profile";
+import MonthProgress from "@/components/month-progress";
 import { useQuery } from "@tanstack/react-query";
 
 interface DashboardProps {
@@ -76,7 +77,7 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
   const currentDate = new Date().toLocaleDateString('pt-BR', { 
     month: 'long', 
     year: 'numeric' 
-  });
+  }).replace(' de ', '/').replace(/^./, str => str.toUpperCase());
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -86,7 +87,7 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <h1 className="text-xl font-bold text-gray-900">💰 Controle Financeiro</h1>
+                <h1 className="text-xl font-bold text-gray-900">💰 Money+</h1>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -118,6 +119,7 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
 
         {activeTab === "dashboard" && (
           <div className="space-y-8">
+            <MonthProgress />
             <FinancialSummary summary={summary} />
             <Charts 
               summary={summary} 

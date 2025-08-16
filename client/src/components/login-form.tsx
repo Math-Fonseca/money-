@@ -90,7 +90,7 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
             <span className="text-2xl">💰</span>
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900">
-            Controle Financeiro
+            Money+
           </CardTitle>
           <CardDescription>
             {isRegister ? "Crie sua conta gratuita" : "Entre na sua conta"}

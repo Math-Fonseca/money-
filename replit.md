@@ -91,6 +91,16 @@ UI Language: Portuguese (Brazilian).
 
 # Recent Changes (August 2025)
 
+## System Rebranding and UI Improvements (August 16, 2025)
+- **System renamed to "Money+"**: Complete rebranding from "Controle Financeiro" to "Money+"
+- **Date format updated**: Changed from "Agosto De 2025" to "Agosto/2025" format
+- **Month progress indicator**: Added visual progress bar showing current day/total days in month
+- **Category system expansion**: Implemented comprehensive category management with 70+ categories organized by type
+- **Category icons enhanced**: Expanded icon selection with diverse emojis for better visual categorization
+- **Subscription-invoice integration fixed**: Resolved critical issue where active subscriptions weren't appearing in credit card invoices
+
+# Recent Changes (August 2025)
+
 ## Subscription System Integration Fixes (August 16, 2025)
 - **Fixed critical integration bugs**: Subscriptions now properly integrate with both credit card invoices and dashboard financial summary
 - **Active/inactive filtering**: Only active subscriptions appear in credit card invoices and consume credit limits
