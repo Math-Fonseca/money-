@@ -437,7 +437,7 @@ export default function CreditCardManager() {
                   className="absolute top-0 left-0 w-full h-1"
                   style={{ backgroundColor: bankInfo.color }}
                 />
-                <CardHeader className="pb-2">
+                <CardHeader className={`pb-2 ${card.isBlocked ? 'blur-[1px]' : ''}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span style={{ color: brandInfo.color }}>{brandInfo.icon}</span>

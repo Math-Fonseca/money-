@@ -300,7 +300,10 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                   
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => setPaymentAmount(totalInvoiceAmount.toString())}
+                      onClick={() => {
+                        const remainingAmount = totalInvoiceAmount - (invoice ? parseFloat(invoice.paidAmount) : 0);
+                        setPaymentAmount(remainingAmount.toString());
+                      }}
                       variant="outline"
                       className="flex-1"
                     >
