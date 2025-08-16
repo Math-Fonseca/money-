@@ -190,17 +190,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const transactions = await storage.getTransactionsByDateRange(startDate, endDate);
       
-      // Get salary setting
+      // Get all settings
       const settings = await storage.getSettings();
       const salarySetting = settings.find(s => s.key === 'salary');
+      const vtSetting = settings.find(s => s.key === 'dailyVT');
+      const vrSetting = settings.find(s => s.key === 'dailyVR');
+      
       const monthlySalary = salarySetting ? parseFloat(salarySetting.value) : 0;
+      const dailyVT = vtSetting ? parseFloat(vtSetting.value) : 0;
+      const dailyVR = vrSetting ? parseFloat(vrSetting.value) : 0;
+      
+      // Calculate VT and VR for the month (assuming 22 working days)
+      const workingDaysInMonth = 22;
+      const monthlyVT = dailyVT * workingDaysInMonth;
+      const monthlyVR = dailyVR * workingDaysInMonth;
       
       const transactionIncome = transactions
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
       
-      // Include salary in total income
-      const totalIncome = transactionIncome + monthlySalary;
+      // Include salary, VT and VR in total income
+      const totalIncome = transactionIncome + monthlySalary + monthlyVT + monthlyVR;
       
       const totalExpenses = transactions
         .filter(t => t.type === 'expense')
@@ -224,6 +234,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentBalance,
         expensesByCategory,
         monthlySalary,
+        monthlyVT,
+        monthlyVR,
         transactionIncome,
         transactions: transactions.slice(0, 10), // Recent transactions
       });

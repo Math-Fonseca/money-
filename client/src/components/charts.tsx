@@ -36,76 +36,92 @@ export default function Charts({ summary, categories, transactions }: ChartsProp
         const incomeData = [];
         const expenseData = [];
         
-        for (let i = 5; i >= 0; i--) {
-          const date = new Date();
-          date.setMonth(date.getMonth() - i);
-          const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
-          months.push(monthName);
+        // Create an async function to fetch financial data for each month
+        const fetchMonthlyData = async () => {
+          const monthlyData = [];
           
-          const monthStart = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
-          const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0];
+          for (let i = 5; i >= 0; i--) {
+            const date = new Date();
+            date.setMonth(date.getMonth() - i);
+            const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
+            const month = date.getMonth() + 1;
+            const year = date.getFullYear();
+            
+            try {
+              const response = await fetch(`/api/financial-summary?month=${month}&year=${year}`);
+              const data = await response.json();
+              
+              monthlyData.push({
+                monthName,
+                income: data.totalIncome || 0,
+                expenses: data.totalExpenses || 0
+              });
+            } catch (error) {
+              monthlyData.push({
+                monthName,
+                income: 0,
+                expenses: 0
+              });
+            }
+          }
           
-          const monthTransactions = transactions.filter(t => {
-            const transactionDate = new Date(t.date);
-            const startDate = new Date(monthStart);
-            const endDate = new Date(monthEnd);
-            return transactionDate >= startDate && transactionDate <= endDate;
-          });
+          return monthlyData;
+        };
+        
+        // Fetch data and create chart
+        fetchMonthlyData().then(monthlyData => {
+          if (!incomeExpensesChartRef.current) return;
           
-          const monthIncome = monthTransactions
-            .filter(t => t.type === 'income')
-            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-          const monthExpenses = monthTransactions
-            .filter(t => t.type === 'expense')
-            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-          
-          incomeData.push(monthIncome);
-          expenseData.push(monthExpenses);
-        }
+          const months = monthlyData.map(d => d.monthName);
+          const incomeData = monthlyData.map(d => d.income);
+          const expenseData = monthlyData.map(d => d.expenses);
 
-        new Chart.Chart(incomeExpensesChartRef.current, {
-          type: 'line',
-          data: {
-            labels: months,
-            datasets: [{
-              label: 'Receitas',
-              data: incomeData,
-              borderColor: '#10B981',
-              backgroundColor: '#10B981',
-              tension: 0.4,
-              fill: false,
-            }, {
-              label: 'Despesas',
-              data: expenseData,
-              borderColor: '#EF4444',
-              backgroundColor: '#EF4444',
-              tension: 0.4,
-              fill: false,
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                position: 'top' as const,
-              }
+          new Chart.Chart(incomeExpensesChartRef.current, {
+            type: 'line',
+            data: {
+              labels: months,
+              datasets: [{
+                label: 'Receitas',
+                data: incomeData,
+                borderColor: '#10B981',
+                backgroundColor: '#10B981',
+                tension: 0.4,
+                fill: false,
+              }, {
+                label: 'Despesas',
+                data: expenseData,
+                borderColor: '#EF4444',
+                backgroundColor: '#EF4444',
+                tension: 0.4,
+                fill: false,
+              }]
             },
-            scales: {
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  callback: function(value) {
-                    return new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL',
-                      minimumFractionDigits: 0,
-                    }).format(value as number);
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: 'top' as const,
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    callback: function(value) {
+                      return new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                        minimumFractionDigits: 0,
+                      }).format(value as number);
+                    }
                   }
                 }
               }
             }
-          }
+          });
+        }).catch(error => {
+          console.error('Erro ao carregar dados do gráfico:', error);
         });
       }
 

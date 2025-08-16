@@ -4,6 +4,8 @@ interface FinancialSummaryProps {
     totalExpenses: number;
     currentBalance: number;
     monthlySalary?: number;
+    monthlyVT?: number;
+    monthlyVR?: number;
     transactionIncome?: number;
   };
 }
@@ -32,10 +34,18 @@ export default function FinancialSummary({ summary }: FinancialSummaryProps) {
             <p className="text-2xl font-bold text-secondary">
               {summary ? formatCurrency(summary.totalIncome) : "R$ 0,00"}
             </p>
-            {summary?.monthlySalary && summary.monthlySalary > 0 && (
+            {(summary?.monthlySalary || summary?.monthlyVT || summary?.monthlyVR) && (
               <div className="text-xs text-gray-500 mt-1 space-y-1">
-                <div>Salário: {formatCurrency(summary.monthlySalary)}</div>
-                {summary.transactionIncome && summary.transactionIncome > 0 && (
+                {summary?.monthlySalary && summary.monthlySalary > 0 && (
+                  <div>Salário: {formatCurrency(summary.monthlySalary)}</div>
+                )}
+                {summary?.monthlyVT && summary.monthlyVT > 0 && (
+                  <div>VT: {formatCurrency(summary.monthlyVT)}</div>
+                )}
+                {summary?.monthlyVR && summary.monthlyVR > 0 && (
+                  <div>VR: {formatCurrency(summary.monthlyVR)}</div>
+                )}
+                {summary?.transactionIncome && summary.transactionIncome > 0 && (
                   <div>Outras receitas: {formatCurrency(summary.transactionIncome)}</div>
                 )}
               </div>

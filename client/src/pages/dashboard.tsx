@@ -31,6 +31,8 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
     currentBalance: number;
     expensesByCategory: Record<string, number>;
     monthlySalary?: number;
+    monthlyVT?: number;
+    monthlyVR?: number;
     transactionIncome?: number;
   }>({
     queryKey: ["/api/financial-summary", selectedMonth, selectedYear],
