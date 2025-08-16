@@ -71,15 +71,15 @@ export default function InstallmentEditModal({
       // Se é uma parcela subsequente, usar o parentTransactionId
       const parentId = transaction.parentTransactionId || transaction.id;
       
-      // Para parcelas, implementar lógica proporcional baseada no valor da primeira parcela
-      if (editData.amount && transaction.installmentNumber === 1) {
-        // Se estamos editando a primeira parcela, todas as outras devem ter o mesmo valor
+      // Para parcelas, sempre implementar lógica proporcional quando alterando valor
+      if (editData.amount) {
+        // Se estamos editando qualquer parcela, todas as outras devem ter o mesmo valor
         await apiRequest("PUT", `/api/transactions/installments/${parentId}`, {
           ...editData,
           proportionalAmount: true // Flag para indicar atualização proporcional
         });
       } else {
-        // Para outras parcelas ou outros campos, atualizar normalmente
+        // Para outros campos que não sejam valor, atualizar normalmente
         await apiRequest("PUT", `/api/transactions/installments/${parentId}`, editData);
       }
     },
@@ -121,11 +121,11 @@ export default function InstallmentEditModal({
           <AlertDialogDescription>
             Esta é uma transação parcelada ({transaction.installmentNumber}/{transaction.installments}x).
             Você deseja aplicar as alterações apenas para esta parcela ou para todas as parcelas?
-            {editData?.amount && transaction.installmentNumber === 1 && (
+            {editData?.amount && (
               <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
                 <p className="text-sm text-blue-800">
-                  <strong>💡 Dica:</strong> Alterando o valor da primeira parcela, todas as outras parcelas 
-                  serão ajustadas proporcionalmente para manter a mesma estrutura de parcelamento.
+                  <strong>💡 Dica:</strong> Alterando o valor de qualquer parcela, todas as outras parcelas 
+                  serão ajustadas para o mesmo valor, mantendo a estrutura de parcelamento.
                 </p>
               </div>
             )}
