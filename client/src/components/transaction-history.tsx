@@ -69,6 +69,7 @@ export default function TransactionHistory({
       });
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
     },
     onError: () => {
       toast({

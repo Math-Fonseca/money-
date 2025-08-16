@@ -48,6 +48,7 @@ export default function RecurringEditModal({
       });
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       onEditSingle();
       onClose();
     },
@@ -73,6 +74,7 @@ export default function RecurringEditModal({
       });
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       onEditAll();
       onClose();
     },
