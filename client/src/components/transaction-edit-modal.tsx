@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -107,15 +107,17 @@ export default function TransactionEditModal({
   ];
 
   // Reset form when transaction changes
-  if (transaction && isOpen) {
-    form.reset({
-      description: transaction.description,
-      amount: transaction.amount,
-      date: new Date(transaction.date).toISOString().split('T')[0],
-      categoryId: transaction.categoryId,
-      paymentMethod: transaction.paymentMethod || "dinheiro",
-    });
-  }
+  useEffect(() => {
+    if (transaction && isOpen) {
+      form.reset({
+        description: transaction.description,
+        amount: transaction.amount,
+        date: new Date(transaction.date).toISOString().split('T')[0],
+        categoryId: transaction.categoryId,
+        paymentMethod: transaction.paymentMethod || "dinheiro",
+      });
+    }
+  }, [transaction, isOpen, form]);
 
   if (!transaction) return null;
 

@@ -242,8 +242,7 @@ export default function IncomeForm({ categories }: IncomeFormProps) {
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Dicas</h3>
           <div className="space-y-2">
-            <p className="text-sm text-gray-600">💡 Configure VT/VR nas configurações para cálculo automático</p>
-            <p className="text-sm text-gray-600">💡 Marque "Incluir VT/VR" ao cadastrar salário</p>
+            <p className="text-sm text-gray-600">💡 Configure salário, VT e VR nas configurações do sistema</p>
             <p className="text-sm text-gray-600">💡 Use receitas recorrentes para entradas mensais fixas</p>
             <p className="text-sm text-gray-600">💡 Organize receitas por categorias específicas</p>
           </div>

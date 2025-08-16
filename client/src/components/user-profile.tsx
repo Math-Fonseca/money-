@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, LogOut, Camera } from "lucide-react";
+import PhotoCropModal from "./photo-crop-modal";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
@@ -27,6 +28,8 @@ interface UserProfileProps {
 
 export default function UserProfile({ userData, onUpdateProfile, onLogout }: UserProfileProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
 
   const form = useForm<ProfileFormData>({
@@ -72,7 +75,11 @@ export default function UserProfile({ userData, onUpdateProfile, onLogout }: Use
         <DialogTrigger asChild>
           <button className="flex items-center gap-3 hover:bg-gray-100 rounded-lg p-2 transition-colors">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={form.watch("profileImage") || userData.profileImage} alt={userData.name} />
+              <AvatarImage 
+                src={form.watch("profileImage") || userData.profileImage} 
+                alt={userData.name}
+                className="object-cover"
+              />
               <AvatarFallback className="bg-primary text-white">
                 {getInitials(userData.name)}
               </AvatarFallback>
@@ -93,7 +100,11 @@ export default function UserProfile({ userData, onUpdateProfile, onLogout }: Use
             <div className="flex flex-col items-center gap-4">
               <div className="relative">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={form.watch("profileImage") || userData.profileImage} alt={userData.name} />
+                  <AvatarImage 
+                    src={form.watch("profileImage") || userData.profileImage} 
+                    alt={userData.name}
+                    className="object-cover"
+                  />
                   <AvatarFallback className="bg-primary text-white text-lg">
                     {getInitials(userData.name)}
                   </AvatarFallback>
@@ -106,13 +117,8 @@ export default function UserProfile({ userData, onUpdateProfile, onLogout }: Use
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      // Criar URL temporária para preview da imagem
-                      const imageUrl = URL.createObjectURL(file);
-                      form.setValue("profileImage", imageUrl);
-                      toast({
-                        title: "Foto carregada",
-                        description: "Sua foto foi carregada! Clique em Salvar para confirmar.",
-                      });
+                      setSelectedFile(file);
+                      setShowCropModal(true);
                     }
                   }}
                 />
@@ -128,6 +134,22 @@ export default function UserProfile({ userData, onUpdateProfile, onLogout }: Use
               </div>
               <p className="text-sm text-gray-500">Clique no ícone para alterar a foto</p>
             </div>
+
+            <PhotoCropModal
+              isOpen={showCropModal}
+              onClose={() => {
+                setShowCropModal(false);
+                setSelectedFile(null);
+              }}
+              imageFile={selectedFile}
+              onCropComplete={(croppedImageUrl) => {
+                form.setValue("profileImage", croppedImageUrl);
+                toast({
+                  title: "Foto ajustada",
+                  description: "Sua foto foi ajustada! Clique em Salvar para confirmar.",
+                });
+              }}
+            />
 
             <div className="grid grid-cols-1 gap-4">
               <div>
