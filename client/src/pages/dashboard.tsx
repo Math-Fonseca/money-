@@ -121,8 +121,10 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
             <FinancialSummary summary={summary} />
             <Charts 
               summary={summary} 
-              categories={categories}
-              transactions={transactions}
+              categories={categories || []}
+              transactions={transactions || []}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
             />
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">

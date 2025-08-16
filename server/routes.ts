@@ -1,6 +1,25 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+
+// Calculate working days (Monday to Friday) in a given month/year
+function calculateWorkingDays(year: number, month: number): number {
+  const date = new Date(year, month - 1, 1); // month is 1-based
+  const lastDay = new Date(year, month, 0).getDate();
+  let workingDays = 0;
+
+  for (let day = 1; day <= lastDay; day++) {
+    date.setDate(day);
+    const dayOfWeek = date.getDay();
+    // Monday = 1, Tuesday = 2, ..., Friday = 5 (exclude Saturday = 6, Sunday = 0)
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      workingDays++;
+    }
+  }
+
+  return workingDays;
+}
+
 import { 
   insertTransactionSchema, 
   insertCategorySchema, 
@@ -200,8 +219,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dailyVT = vtSetting ? parseFloat(vtSetting.value) : 0;
       const dailyVR = vrSetting ? parseFloat(vrSetting.value) : 0;
       
-      // Calculate VT and VR for the month (assuming 22 working days)
-      const workingDaysInMonth = 22;
+      // Calculate working days for the specific month
+      const workingDaysInMonth = calculateWorkingDays(targetYear, targetMonth);
       const monthlyVT = dailyVT * workingDaysInMonth;
       const monthlyVR = dailyVR * workingDaysInMonth;
       

@@ -98,13 +98,29 @@ export default function UserProfile({ userData, onUpdateProfile, onLogout }: Use
                     {getInitials(userData.name)}
                   </AvatarFallback>
                 </Avatar>
+                <input
+                  type="file"
+                  id="profile-image-upload"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      // Por enquanto, vamos gerar um avatar baseado no nome
+                      const imageUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}&backgroundColor=10B981`;
+                      form.setValue("profileImage", imageUrl);
+                      toast({
+                        title: "Foto atualizada",
+                        description: "Sua foto de perfil foi atualizada com sucesso!",
+                      });
+                    }
+                  }}
+                />
                 <button
                   type="button"
                   className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-1 hover:bg-green-600 transition-colors"
                   onClick={() => {
-                    // Simular upload de imagem - em produção usaria um serviço real
-                    const imageUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}`;
-                    form.setValue("profileImage", imageUrl);
+                    document.getElementById('profile-image-upload')?.click();
                   }}
                 >
                   <Camera className="h-3 w-3" />

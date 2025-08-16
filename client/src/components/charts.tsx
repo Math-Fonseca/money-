@@ -14,9 +14,11 @@ interface ChartsProps {
     type: 'income' | 'expense';
     categoryId?: string;
   }>;
+  selectedMonth: number;
+  selectedYear: number;
 }
 
-export default function Charts({ summary, categories, transactions }: ChartsProps) {
+export default function Charts({ summary, categories, transactions, selectedMonth, selectedYear }: ChartsProps) {
   const incomeExpensesChartRef = useRef<HTMLCanvasElement>(null);
   const categoryChartRef = useRef<HTMLCanvasElement>(null);
 
@@ -36,16 +38,15 @@ export default function Charts({ summary, categories, transactions }: ChartsProp
         const incomeData = [];
         const expenseData = [];
         
-        // Create an async function to fetch financial data for each month
+        // Create an async function to fetch financial data for 6 months around selected month
         const fetchMonthlyData = async () => {
           const monthlyData = [];
           
           for (let i = 5; i >= 0; i--) {
-            const date = new Date();
-            date.setMonth(date.getMonth() - i);
-            const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
-            const month = date.getMonth() + 1;
-            const year = date.getFullYear();
+            const targetDate = new Date(selectedYear, selectedMonth - 1 - i, 1);
+            const monthName = targetDate.toLocaleDateString('pt-BR', { month: 'short' });
+            const month = targetDate.getMonth() + 1;
+            const year = targetDate.getFullYear();
             
             try {
               const response = await fetch(`/api/financial-summary?month=${month}&year=${year}`);
