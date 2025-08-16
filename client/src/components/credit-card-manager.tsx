@@ -430,7 +430,7 @@ export default function CreditCardManager() {
             return (
               <Card 
                 key={card.id} 
-                className={`relative overflow-hidden cursor-pointer hover:shadow-lg transition-all ${card.isBlocked ? 'opacity-60 blur-[1px]' : ''}`}
+                className={`relative overflow-hidden cursor-pointer hover:shadow-lg transition-all ${card.isBlocked ? 'opacity-60' : ''}`}
                 onClick={() => handleCardClick(card)}
               >
                 <div 
@@ -482,7 +482,7 @@ export default function CreditCardManager() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className={`space-y-4 ${card.isBlocked ? 'blur-[1px]' : ''}`}>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span>Usado: {formatCurrency(card.currentUsed)}</span>
@@ -520,7 +520,7 @@ export default function CreditCardManager() {
                         {usagePercentage.toFixed(1)}% utilizado
                       </Badge>
                       {card.isBlocked && (
-                        <Badge variant="destructive" className="animate-pulse font-bold">
+                        <Badge variant="destructive" className="animate-pulse font-bold relative z-10">
                           🔒 Cartão bloqueado
                         </Badge>
                       )}

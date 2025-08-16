@@ -207,6 +207,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(201).json(parentTransaction);
       } else {
         const newTransaction = await storage.createTransaction(transactionData);
+        
+        // Se for uma transação de cartão de crédito, atualizar o limite usado
+        if (newTransaction.creditCardId && newTransaction.type === 'expense') {
+          const creditCard = await storage.getCreditCardById(newTransaction.creditCardId);
+          if (creditCard) {
+            const currentUsed = parseFloat(creditCard.currentUsed || "0");
+            const transactionAmount = parseFloat(newTransaction.amount);
+            const newCurrentUsed = currentUsed + transactionAmount;
+            
+            await storage.updateCreditCard(newTransaction.creditCardId, {
+              currentUsed: newCurrentUsed.toFixed(2)
+            });
+          }
+        }
+        
         res.status(201).json(newTransaction);
       }
     } catch (error) {
@@ -531,10 +546,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         newStatus = "partial";
       }
       
+      // Atualizar a fatura
       const updatedInvoice = await storage.updateCreditCardInvoice(invoiceId, {
         paidAmount: newPaidAmount.toFixed(2),
         status: newStatus
       });
+      
+      // Atualizar o limite usado do cartão (descontar o valor pago)
+      const creditCard = await storage.getCreditCardById(invoice.creditCardId);
+      if (creditCard) {
+        const currentUsed = parseFloat(creditCard.currentUsed || "0");
+        const newCurrentUsed = Math.max(0, currentUsed - paymentAmount);
+        
+        await storage.updateCreditCard(invoice.creditCardId, {
+          currentUsed: newCurrentUsed.toFixed(2)
+        });
+      }
       
       res.json(updatedInvoice);
     } catch (error) {
