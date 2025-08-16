@@ -247,7 +247,14 @@ export default function TransactionHistory({
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{transaction.description}</p>
+                      <p className="font-medium text-gray-900">
+                        {transaction.description}
+                        {transaction.installments && transaction.installments > 1 && (
+                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            {transaction.installmentNumber}/{transaction.installments}x
+                          </span>
+                        )}
+                      </p>
                       <div className="flex items-center text-sm text-gray-600">
                         <span>{categoryInfo.name}</span>
                         <span className="mx-2">•</span>
@@ -275,15 +282,21 @@ export default function TransactionHistory({
                       size="sm" 
                       className="text-gray-400 hover:text-red-600"
                       onClick={() => {
-                        const isRecurring = transaction.isRecurring || transaction.parentTransactionId;
+                        const isRecurring = transaction.isRecurring || (transaction.parentTransactionId && !transaction.installments);
                         const isInstallment = transaction.installments && transaction.installments > 1;
                         
-                        if (isRecurring) {
-                          setDeletingTransaction(transaction);
-                          setShowRecurringDeleteModal(true);
-                        } else if (isInstallment) {
+                        console.log('Transaction delete clicked:', {
+                          transaction,
+                          isRecurring,
+                          isInstallment
+                        });
+                        
+                        if (isInstallment) {
                           setDeletingTransaction(transaction);
                           setShowInstallmentDeleteModal(true);
+                        } else if (isRecurring) {
+                          setDeletingTransaction(transaction);
+                          setShowRecurringDeleteModal(true);
                         } else {
                           setDeletingTransaction(transaction);
                         }

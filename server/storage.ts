@@ -328,10 +328,6 @@ export class MemStorage implements IStorage {
     return Array.from(this.creditCards.values()).filter(c => c.isActive);
   }
 
-  async getCreditCardById(id: string): Promise<CreditCard | undefined> {
-    return this.creditCards.get(id);
-  }
-
   async createCreditCard(creditCard: InsertCreditCard): Promise<CreditCard> {
     const id = randomUUID();
     const newCreditCard: CreditCard = { 
