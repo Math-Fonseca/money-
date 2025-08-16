@@ -239,10 +239,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(201).json(newTransaction);
       }
     } catch (error) {
+      console.error("Error creating transaction:", error);
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: "Invalid transaction data", errors: error.errors });
       } else {
-        res.status(500).json({ message: "Failed to create transaction" });
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        res.status(500).json({ message: "Failed to create transaction", error: errorMessage });
       }
     }
   });
