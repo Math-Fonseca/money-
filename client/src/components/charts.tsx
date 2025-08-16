@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface ChartsProps {
   summary?: {
@@ -21,15 +21,27 @@ interface ChartsProps {
 export default function Charts({ summary, categories, transactions, selectedMonth, selectedYear }: ChartsProps) {
   const incomeExpensesChartRef = useRef<HTMLCanvasElement>(null);
   const categoryChartRef = useRef<HTMLCanvasElement>(null);
+  const [chartsLoaded, setChartsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     if (!summary || !categories || !transactions) return;
     
+    // Reset error state
+    setHasError(false);
+    
     // Dynamically import Chart.js to avoid SSR issues
     import('chart.js/auto').then((Chart) => {
       // Destroy existing charts
-      Chart.Chart.getChart(incomeExpensesChartRef.current!)?.destroy();
-      Chart.Chart.getChart(categoryChartRef.current!)?.destroy();
+      try {
+        const incomeChart = Chart.Chart.getChart(incomeExpensesChartRef.current!);
+        if (incomeChart) incomeChart.destroy();
+        
+        const categoryChart = Chart.Chart.getChart(categoryChartRef.current!);
+        if (categoryChart) categoryChart.destroy();
+      } catch (error) {
+        // Silent cleanup
+      }
 
       // Income vs Expenses Chart
       if (incomeExpensesChartRef.current) {
@@ -59,6 +71,7 @@ export default function Charts({ summary, categories, transactions, selectedMont
                 expenses: data.totalExpenses || 0
               });
             } catch (error) {
+              // Silent error handling
               monthlyData.push({
                 monthName: `${monthName}/${yearShort}`,
                 income: 0,
@@ -123,7 +136,8 @@ export default function Charts({ summary, categories, transactions, selectedMont
             }
           });
         }).catch(error => {
-          console.error('Erro ao carregar dados do gráfico:', error);
+          // Silent error handling - don't log chart data errors
+          setHasError(true);
         });
       }
 
@@ -183,8 +197,42 @@ export default function Charts({ summary, categories, transactions, selectedMont
           });
         }
       }
+      
+      setChartsLoaded(true);
+    }).catch(error => {
+      // Silent error handling - don't log import errors
+      setHasError(true);
+      setChartsLoaded(true);
     });
   }, [summary, categories, transactions]);
+
+  if (hasError) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Income vs Expenses Chart Fallback */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Receitas vs Despesas</h3>
+          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+            <div className="text-center">
+              <p className="text-gray-500">📊</p>
+              <p className="text-sm text-gray-500 mt-2">Gráfico temporariamente indisponível</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Category Breakdown Chart Fallback */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Despesas por Categoria</h3>
+          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+            <div className="text-center">
+              <p className="text-gray-500">📈</p>
+              <p className="text-sm text-gray-500 mt-2">Gráfico temporariamente indisponível</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -192,7 +240,15 @@ export default function Charts({ summary, categories, transactions, selectedMont
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Receitas vs Despesas</h3>
         <div className="h-64">
-          <canvas ref={incomeExpensesChartRef}></canvas>
+          {!chartsLoaded && (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-2"></div>
+                <p className="text-sm text-gray-500">Carregando gráfico...</p>
+              </div>
+            </div>
+          )}
+          <canvas ref={incomeExpensesChartRef} style={{ display: chartsLoaded ? 'block' : 'none' }}></canvas>
         </div>
       </div>
 
@@ -200,7 +256,15 @@ export default function Charts({ summary, categories, transactions, selectedMont
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Despesas por Categoria</h3>
         <div className="h-64">
-          <canvas ref={categoryChartRef}></canvas>
+          {!chartsLoaded && (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-2"></div>
+                <p className="text-sm text-gray-500">Carregando gráfico...</p>
+              </div>
+            </div>
+          )}
+          <canvas ref={categoryChartRef} style={{ display: chartsLoaded ? 'block' : 'none' }}></canvas>
         </div>
       </div>
     </div>
