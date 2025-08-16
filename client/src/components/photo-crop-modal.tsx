@@ -36,16 +36,35 @@ export default function PhotoCropModal({
     const container = containerRef.current;
     if (!image || !container) return;
 
-    const containerSize = 300;
+    const maxContainerSize = 400;
+    const cropSize = 200;
     const imageAspectRatio = image.naturalWidth / image.naturalHeight;
     
     let displayWidth, displayHeight;
+    
+    // Garantir que a imagem sempre seja grande o suficiente para o crop
+    const minSize = cropSize + 40; // Padding extra para facilitar o posicionamento
+    
     if (imageAspectRatio > 1) {
-      displayWidth = containerSize;
-      displayHeight = containerSize / imageAspectRatio;
+      // Imagem mais larga
+      displayWidth = Math.max(minSize, Math.min(maxContainerSize, maxContainerSize));
+      displayHeight = displayWidth / imageAspectRatio;
+      
+      // Se a altura ficou menor que o mínimo, ajustar pela altura
+      if (displayHeight < minSize) {
+        displayHeight = minSize;
+        displayWidth = displayHeight * imageAspectRatio;
+      }
     } else {
-      displayHeight = containerSize;
-      displayWidth = containerSize * imageAspectRatio;
+      // Imagem mais alta
+      displayHeight = Math.max(minSize, Math.min(maxContainerSize, maxContainerSize));
+      displayWidth = displayHeight * imageAspectRatio;
+      
+      // Se a largura ficou menor que o mínimo, ajustar pela largura
+      if (displayWidth < minSize) {
+        displayWidth = minSize;
+        displayHeight = displayWidth / imageAspectRatio;
+      }
     }
 
     setImageSize({ width: displayWidth, height: displayHeight });
@@ -53,9 +72,9 @@ export default function PhotoCropModal({
     
     // Center the crop area
     setCropArea({
-      x: Math.max(0, (displayWidth - 200) / 2),
-      y: Math.max(0, (displayHeight - 200) / 2),
-      size: 200
+      x: Math.max(0, (displayWidth - cropSize) / 2),
+      y: Math.max(0, (displayHeight - cropSize) / 2),
+      size: cropSize
     });
   }, []);
 
@@ -131,7 +150,7 @@ export default function PhotoCropModal({
         <div className="space-y-4">
           <div className="text-center">
             <p className="text-sm text-gray-600 mb-4">
-              Arraste o quadrado para posicionar sua foto. A área selecionada será sua foto de perfil.
+              Arraste o círculo para posicionar sua foto. A área dentro do círculo será sua foto de perfil.
             </p>
             
             {imageFile && imageUrl && (
@@ -159,24 +178,36 @@ export default function PhotoCropModal({
                     draggable={false}
                   />
                   
-                  {/* Crop overlay */}
+                  {/* Dark overlay with circular cutout */}
+                  <div 
+                    className="absolute inset-0 bg-black bg-opacity-50"
+                    style={{
+                      clipPath: `polygon(0% 0%, 0% 100%, ${cropArea.x}px 100%, ${cropArea.x}px ${cropArea.y}px, ${cropArea.x + cropArea.size}px ${cropArea.y}px, ${cropArea.x + cropArea.size}px ${cropArea.y + cropArea.size}px, ${cropArea.x}px ${cropArea.y + cropArea.size}px, ${cropArea.x}px 100%, 100% 100%, 100% 0%)`
+                    }}
+                  />
+                  
+                  {/* Crop area */}
                   <div
-                    className="absolute border-4 border-primary bg-white bg-opacity-20"
+                    className="absolute border-4 border-primary rounded-full bg-transparent"
                     style={{
                       left: `${cropArea.x}px`,
                       top: `${cropArea.y}px`,
                       width: `${cropArea.size}px`,
                       height: `${cropArea.size}px`,
-                      cursor: 'move'
+                      cursor: 'move',
+                      boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)'
                     }}
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      const startX = e.clientX - cropArea.x;
-                      const startY = e.clientY - cropArea.y;
+                      const rect = containerRef.current?.getBoundingClientRect();
+                      if (!rect) return;
+                      
+                      const startX = e.clientX - rect.left - cropArea.x;
+                      const startY = e.clientY - rect.top - cropArea.y;
                       
                       const handleMouseMove = (e: MouseEvent) => {
-                        const newX = e.clientX - startX;
-                        const newY = e.clientY - startY;
+                        const newX = e.clientX - rect.left - startX;
+                        const newY = e.clientY - rect.top - startY;
                         
                         setCropArea(prev => ({
                           ...prev,
@@ -194,7 +225,10 @@ export default function PhotoCropModal({
                       document.addEventListener('mouseup', handleMouseUp);
                     }}
                   >
-                    <div className="w-full h-full border-2 border-dashed border-white opacity-60"></div>
+                    <div className="w-full h-full border-2 border-dashed border-white opacity-80 rounded-full"></div>
+                    
+                    {/* Center indicator */}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-primary rounded-full opacity-70"></div>
                   </div>
                 </div>
                 
