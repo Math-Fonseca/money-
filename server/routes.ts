@@ -255,6 +255,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete all recurring transactions by parent ID
+  app.delete("/api/transactions/recurring/:parentId", async (req, res) => {
+    try {
+      const { parentId } = req.params;
+      const deleted = await storage.deleteRecurringTransactions(parentId);
+      
+      if (!deleted) {
+        res.status(404).json({ message: "Recurring transactions not found" });
+        return;
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete recurring transactions" });
+    }
+  });
+
   // Financial summary endpoint
   app.get("/api/financial-summary", async (req, res) => {
     try {

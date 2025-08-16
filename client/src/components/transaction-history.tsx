@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import TransactionEditModal from "./transaction-edit-modal";
+import RecurringDeleteModal from "./recurring-delete-modal";
 
 interface Transaction {
   id: string;
@@ -43,6 +45,8 @@ export default function TransactionHistory({
     categoryId: "all",
     search: "",
   });
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -251,30 +255,22 @@ export default function TransactionHistory({
                     <p className="text-sm text-gray-600">{formatDate(transaction.date)}</p>
                   </div>
                   <div className="ml-4 flex gap-2">
-                    <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-600">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-gray-400 hover:text-blue-600"
+                      onClick={() => setEditingTransaction(transaction)}
+                    >
                       ✏️
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-red-600">
-                          🗑️
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir transação</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeleteTransaction(transaction.id)}>
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-gray-400 hover:text-red-600"
+                      onClick={() => setDeletingTransaction(transaction)}
+                    >
+                      🗑️
+                    </Button>
                   </div>
                 </div>
               );
@@ -284,6 +280,19 @@ export default function TransactionHistory({
           )}
         </div>
       </div>
+
+      <TransactionEditModal
+        transaction={editingTransaction}
+        categories={categories}
+        isOpen={!!editingTransaction}
+        onClose={() => setEditingTransaction(null)}
+      />
+
+      <RecurringDeleteModal
+        transaction={deletingTransaction}
+        isOpen={!!deletingTransaction}
+        onClose={() => setDeletingTransaction(null)}
+      />
     </div>
   );
 }

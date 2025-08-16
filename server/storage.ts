@@ -30,6 +30,7 @@ export interface IStorage {
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction | undefined>;
   deleteTransaction(id: string): Promise<boolean>;
+  deleteRecurringTransactions(parentId: string): Promise<boolean>;
 
   // Budgets
   getBudgets(): Promise<Budget[]>;
@@ -214,6 +215,25 @@ export class MemStorage implements IStorage {
 
   async deleteTransaction(id: string): Promise<boolean> {
     return this.transactions.delete(id);
+  }
+
+  async deleteRecurringTransactions(parentId: string): Promise<boolean> {
+    let deleted = false;
+    
+    // Delete the parent transaction
+    if (this.transactions.delete(parentId)) {
+      deleted = true;
+    }
+    
+    // Delete all recurring instances (children)
+    for (const [id, transaction] of this.transactions.entries()) {
+      if (transaction.parentTransactionId === parentId) {
+        this.transactions.delete(id);
+        deleted = true;
+      }
+    }
+    
+    return deleted;
   }
 
   // Budgets

@@ -106,12 +106,12 @@ export default function UserProfile({ userData, onUpdateProfile, onLogout }: Use
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      // Por enquanto, vamos gerar um avatar baseado no nome
-                      const imageUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${userData.name}&backgroundColor=10B981`;
+                      // Criar URL temporária para preview da imagem
+                      const imageUrl = URL.createObjectURL(file);
                       form.setValue("profileImage", imageUrl);
                       toast({
-                        title: "Foto atualizada",
-                        description: "Sua foto de perfil foi atualizada com sucesso!",
+                        title: "Foto carregada",
+                        description: "Sua foto foi carregada! Clique em Salvar para confirmar.",
                       });
                     }
                   }}

@@ -8,6 +8,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Trash2, Search, Filter, X } from "lucide-react";
+import TransactionEditModal from "./transaction-edit-modal";
+import RecurringDeleteModal from "./recurring-delete-modal";
 
 interface Transaction {
   id: string;
@@ -39,6 +41,8 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
     categoryId: "all",
     search: "",
   });
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -315,33 +319,22 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
                         <p className="text-sm text-gray-500 capitalize">{transaction.type}</p>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-600">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-gray-400 hover:text-blue-600"
+                          onClick={() => setEditingTransaction(transaction)}
+                        >
                           ✏️
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-red-600">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Excluir transação</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteTransactionMutation.mutate(transaction.id)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Excluir
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-gray-400 hover:text-red-600"
+                          onClick={() => setDeletingTransaction(transaction)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -362,6 +355,19 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
           )}
         </CardContent>
       </Card>
+
+      <TransactionEditModal
+        transaction={editingTransaction}
+        categories={categories}
+        isOpen={!!editingTransaction}
+        onClose={() => setEditingTransaction(null)}
+      />
+
+      <RecurringDeleteModal
+        transaction={deletingTransaction}
+        isOpen={!!deletingTransaction}
+        onClose={() => setDeletingTransaction(null)}
+      />
     </div>
   );
 }

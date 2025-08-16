@@ -221,18 +221,7 @@ export default function IncomeForm({ categories }: IncomeFormProps) {
               <Label htmlFor="recurring" className="text-sm">Receita recorrente</Label>
             </div>
 
-            {(monthlyVT > 0 || monthlyVR > 0) && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="includeVTVR"
-                  checked={includeVTVR}
-                  onCheckedChange={(checked) => setIncludeVTVR(!!checked)}
-                />
-                <Label htmlFor="includeVTVR" className="text-sm">
-                  Incluir VT/VR automaticamente ({formatCurrency(monthlyVT + monthlyVR)})
-                </Label>
-              </div>
-            )}
+
           </div>
 
           <Button
@@ -247,31 +236,7 @@ export default function IncomeForm({ categories }: IncomeFormProps) {
 
       {/* VT/VR Preview */}
       <div className="space-y-6">
-        {(monthlyVT > 0 || monthlyVR > 0) && (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Valores Configurados</h3>
-            <div className="space-y-3">
-              {monthlyVT > 0 && (
-                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                  <div>
-                    <span className="text-gray-700">VT Mensal</span>
-                    <p className="text-sm text-gray-600">{workingDays} dias úteis</p>
-                  </div>
-                  <span className="font-semibold text-secondary">{formatCurrency(monthlyVT)}</span>
-                </div>
-              )}
-              {monthlyVR > 0 && (
-                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                  <div>
-                    <span className="text-gray-700">VR Mensal</span>
-                    <p className="text-sm text-gray-600">{workingDays} dias úteis</p>
-                  </div>
-                  <span className="font-semibold text-secondary">{formatCurrency(monthlyVR)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+
 
         {/* Income Tips */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
