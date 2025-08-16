@@ -86,6 +86,7 @@ export default function TransactionEditModal({
       });
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       onClose();
     },
     onError: () => {
