@@ -508,6 +508,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rota para registrar pagamento de fatura
+  app.put("/api/credit-card-invoices/:invoiceId/pay", async (req, res) => {
+    try {
+      const { invoiceId } = req.params;
+      const { amount } = req.body;
+      
+      const invoice = await storage.getCreditCardInvoiceById(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Fatura não encontrada" });
+      }
+      
+      const currentPaidAmount = parseFloat(invoice.paidAmount || "0");
+      const paymentAmount = parseFloat(amount || "0");
+      const newPaidAmount = currentPaidAmount + paymentAmount;
+      const totalAmount = parseFloat(invoice.totalAmount || "0");
+      
+      let newStatus = "pending";
+      if (newPaidAmount >= totalAmount && totalAmount > 0) {
+        newStatus = "paid";
+      } else if (newPaidAmount > 0) {
+        newStatus = "partial";
+      }
+      
+      const updatedInvoice = await storage.updateCreditCardInvoice(invoiceId, {
+        paidAmount: newPaidAmount.toFixed(2),
+        status: newStatus
+      });
+      
+      res.json(updatedInvoice);
+    } catch (error) {
+      console.error("Erro ao registrar pagamento:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
   app.delete("/api/credit-cards/:id", async (req, res) => {
     try {
       const { id } = req.params;

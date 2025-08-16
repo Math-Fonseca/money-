@@ -65,7 +65,6 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedInvoice, setSelectedInvoice] = useState<CreditCardInvoice | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [installmentCount, setInstallmentCount] = useState("1");
 
   // Generate invoice period based on card's closing day
   const getInvoicePeriod = (date: Date) => {
@@ -88,18 +87,18 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
   });
 
   // Fetch invoice data
-  const { data: invoice } = useQuery({
+  const { data: invoice = null } = useQuery<CreditCardInvoice | null>({
     queryKey: ["/api/credit-card-invoices", creditCard?.id, format(endDate, 'yyyy-MM-dd')],
     enabled: !!creditCard && isOpen,
   });
 
   // Filter transactions for this credit card and period
-  const creditCardTransactions = transactions.filter((t: Transaction) => 
+  const creditCardTransactions = Array.isArray(transactions) ? transactions.filter((t: Transaction) => 
     t.creditCardId === creditCard?.id &&
     t.type === 'expense' &&
     new Date(t.date) >= startDate &&
     new Date(t.date) <= endDate
-  );
+  ) : [];
 
   const totalInvoiceAmount = creditCardTransactions.reduce((sum: number, t: Transaction) => 
     sum + parseFloat(t.amount), 0
@@ -107,7 +106,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
 
   // Payment mutation
   const payInvoiceMutation = useMutation({
-    mutationFn: async (data: { invoiceId: string; amount: string; installments?: number }) => {
+    mutationFn: async (data: { invoiceId: string; amount: string }) => {
       return await apiRequest("PUT", `/api/credit-card-invoices/${data.invoiceId}/pay`, data);
     },
     onSuccess: () => {
@@ -118,7 +117,6 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
       queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       setPaymentAmount("");
-      setInstallmentCount("1");
     },
     onError: () => {
       toast({
@@ -133,7 +131,6 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     if (!invoice || !paymentAmount) return;
     
     const amount = parseFloat(paymentAmount);
-    const installments = parseInt(installmentCount);
     
     if (amount <= 0) {
       toast({
@@ -146,8 +143,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
 
     payInvoiceMutation.mutate({
       invoiceId: invoice.id,
-      amount: paymentAmount,
-      installments: installments > 1 ? installments : undefined
+      amount: paymentAmount
     });
   };
 
@@ -300,23 +296,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                       onChange={(e) => setPaymentAmount(e.target.value)}
                     />
                   </div>
-                  
-                  <div>
-                    <Label htmlFor="installments">Parcelar Pagamento</Label>
-                    <Select value={installmentCount} onValueChange={setInstallmentCount}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">À vista</SelectItem>
-                        {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
-                          <SelectItem key={num} value={num.toString()}>
-                            {num}x de R$ {paymentAmount ? (parseFloat(paymentAmount) / num).toFixed(2) : "0.00"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
                   
                   <div className="flex gap-2">
                     <Button

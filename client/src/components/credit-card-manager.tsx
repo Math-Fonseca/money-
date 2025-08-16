@@ -520,8 +520,8 @@ export default function CreditCardManager() {
                         {usagePercentage.toFixed(1)}% utilizado
                       </Badge>
                       {card.isBlocked && (
-                        <Badge variant="destructive">
-                          Cartão bloqueado
+                        <Badge variant="destructive" className="animate-pulse font-bold">
+                          🔒 Cartão bloqueado
                         </Badge>
                       )}
                     </div>
@@ -545,6 +545,13 @@ export default function CreditCardManager() {
   );
 
   function handleCardClick(card: CreditCard) {
+    // Se o cartão estiver bloqueado, abrir modo edição em vez da fatura
+    if (card.isBlocked) {
+      const fakeEvent = { stopPropagation: () => {} } as React.MouseEvent<HTMLButtonElement>;
+      handleEditCard(card, fakeEvent);
+      return;
+    }
+    
     setSelectedCreditCard(card);
     setIsInvoiceModalOpen(true);
   }
