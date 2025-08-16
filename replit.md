@@ -119,12 +119,14 @@ UI Language: Portuguese (Brazilian).
 - Full CRUD operations for all transaction types
 
 ## Credit Card Installment System (August 16, 2025)
-- Fixed critical bug in installment credit limit calculation
-- Installment transactions now correctly reserve full purchase amount in credit limit
-- Example: R$ 500 in 4x installments correctly uses R$ 500 limit (not R$ 625)
-- Intelligent installment deletion: option to delete single installment or all installments
-- Visual indicators show installment progress (1/4x, 2/4x, etc.) in transaction list
-- Proper credit limit release when installment transactions are deleted
+- **Complete installment management**: Transactions parceladas behave as cohesive groups
+- **Smart detection**: System differentiates installments from recurring transactions  
+- **Unified editing**: Any installment can edit all others with proportional amounts
+- **Unified deletion**: InstallmentDeleteModal with options for single or all installments
+- **Credit limit integration**: Real-time limit updates for all installment operations
+- **Visual indicators**: Show installment progress (1/3x, 2/3x, etc.) in transaction list
+- **Backend routes**: `/api/transactions/installments/:parentId` for batch operations
+- **Cache synchronization**: All operations properly invalidate credit card queries
 
 ## Year Support
 - System supports unlimited years (not restricted to 2024-2026)

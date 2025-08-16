@@ -286,12 +286,6 @@ export default function TransactionHistory({
                         const isRecurring = transaction.isRecurring || (transaction.parentTransactionId && !transaction.installments);
                         const isInstallment = transaction.installments && transaction.installments > 1;
                         
-                        console.log('Transaction delete clicked:', {
-                          transaction,
-                          isRecurring,
-                          isInstallment
-                        });
-                        
                         if (isInstallment) {
                           setDeletingTransaction(transaction);
                           setShowInstallmentDeleteModal(true);

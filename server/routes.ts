@@ -371,6 +371,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete all installment transactions by parent ID
+  app.delete("/api/transactions/installments/:parentId", async (req, res) => {
+    try {
+      const { parentId } = req.params;
+      
+      // Get all installment transactions first to calculate credit card adjustment
+      const installmentTransactions = await storage.getInstallmentTransactions(parentId);
+      
+      if (!installmentTransactions || installmentTransactions.length === 0) {
+        res.status(404).json({ message: "Installment transactions not found" });
+        return;
+      }
+
+      // Calculate total amount to remove from credit card limit
+      const parentTransaction = installmentTransactions.find((t: Transaction) => t.id === parentId);
+      if (parentTransaction && parentTransaction.creditCardId && parentTransaction.type === 'expense') {
+        const totalAmount = parseFloat(parentTransaction.amount) * installmentTransactions.length;
+        
+        const creditCard = await storage.getCreditCardById(parentTransaction.creditCardId);
+        if (creditCard) {
+          const currentUsed = parseFloat(creditCard.currentUsed || "0");
+          const newCurrentUsed = Math.max(0, currentUsed - totalAmount);
+          
+          await storage.updateCreditCard(parentTransaction.creditCardId, {
+            currentUsed: newCurrentUsed.toFixed(2)
+          });
+        }
+      }
+
+      // Delete all installment transactions
+      const deleted = await storage.deleteInstallmentTransactions(parentId);
+      
+      if (!deleted) {
+        res.status(404).json({ message: "Installment transactions not found" });
+        return;
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting installment transactions:", error);
+      res.status(500).json({ message: "Failed to delete installment transactions" });
+    }
+  });
+
   // Delete all installment transactions by parent ID (including parent)
   app.delete("/api/transactions/installments/:parentId", async (req, res) => {
     try {

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
 interface Transaction {
@@ -10,9 +10,12 @@ interface Transaction {
   amount: string;
   date: string;
   type: 'income' | 'expense';
+  categoryId?: string;
+  paymentMethod?: string;
   installments?: number;
   installmentNumber?: number;
   parentTransactionId?: string;
+  creditCardId?: string;
 }
 
 interface InstallmentDeleteModalProps {
@@ -52,12 +55,9 @@ export default function InstallmentDeleteModal({
     },
   });
 
-  const deleteAllMutation = useMutation({
+  const deleteAllInstallmentsMutation = useMutation({
     mutationFn: async (parentId: string) => {
-      // Se é a primeira parcela (sem parentTransactionId), usar seu próprio ID
-      // Se é uma parcela subsequente, usar o parentTransactionId
-      const targetId = transaction?.parentTransactionId || transaction?.id;
-      await apiRequest("DELETE", `/api/transactions/installments/${targetId}`);
+      await apiRequest("DELETE", `/api/transactions/installments/${parentId}`);
     },
     onSuccess: () => {
       toast({
@@ -79,80 +79,60 @@ export default function InstallmentDeleteModal({
   });
 
   const handleDeleteSingle = () => {
-    if (transaction) {
-      deleteSingleMutation.mutate(transaction.id);
-    }
+    if (!transaction) return;
+    deleteSingleMutation.mutate(transaction.id);
   };
 
-  const handleDeleteAll = () => {
-    if (transaction) {
-      deleteAllMutation.mutate(transaction.id);
-    }
+  const handleDeleteAllInstallments = () => {
+    if (!transaction) return;
+    
+    // Se é a primeira parcela (sem parentTransactionId), usar seu próprio ID
+    // Se é uma parcela subsequente, usar o parentTransactionId
+    const parentId = transaction.parentTransactionId || transaction.id;
+    deleteAllInstallmentsMutation.mutate(parentId);
   };
 
   if (!transaction) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle>Excluir Transação Parcelada</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="text-sm text-gray-600">
-            <p className="mb-2">
-              Esta é uma transação parcelada ({transaction.installmentNumber}/{transaction.installments}).
-            </p>
-            <p>
-              <strong>Transação:</strong> {transaction.description}
-            </p>
-            <p>
-              <strong>Valor:</strong> R$ {parseFloat(transaction.amount).toFixed(2)}
-            </p>
-          </div>
-
-          <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
-            ⚠️ <strong>Atenção:</strong> Escolha como deseja excluir:
-          </div>
-
-          <div className="space-y-3">
-            <Button
-              onClick={handleDeleteSingle}
-              disabled={deleteSingleMutation.isPending}
-              variant="outline"
-              className="w-full justify-start"
-            >
-              🗑️ Excluir apenas esta parcela
-              <div className="text-xs text-gray-500 ml-auto">
-                ({transaction.installmentNumber}/{transaction.installments})
-              </div>
-            </Button>
-
-            <Button
-              onClick={handleDeleteAll}
-              disabled={deleteAllMutation.isPending}
-              variant="destructive"
-              className="w-full justify-start"
-            >
-              🗑️ Excluir todas as parcelas
-              <div className="text-xs text-white/80 ml-auto">
-                (Todas as {transaction.installments}x)
-              </div>
-            </Button>
-          </div>
-
-          <div className="flex justify-end pt-4">
-            <Button 
-              variant="ghost" 
-              onClick={onClose}
-              disabled={deleteSingleMutation.isPending || deleteAllMutation.isPending}
-            >
-              Cancelar
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <AlertDialog open={isOpen} onOpenChange={onClose}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir transação parcelada</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta é uma transação parcelada ({transaction.installmentNumber}/{transaction.installments}x).
+            Você deseja excluir apenas esta parcela ou todas as parcelas?
+            
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-sm text-amber-800">
+                <strong>⚠️ Atenção:</strong> Se você excluir todas as parcelas, o limite do cartão será 
+                liberado completamente para esta compra. Se excluir apenas uma parcela, apenas o valor 
+                desta parcela será liberado no limite.
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+          <AlertDialogCancel onClick={onClose}>
+            Cancelar
+          </AlertDialogCancel>
+          <Button
+            variant="outline"
+            onClick={handleDeleteSingle}
+            disabled={deleteSingleMutation.isPending}
+            className="border-orange-300 text-orange-700 hover:bg-orange-50"
+          >
+            {deleteSingleMutation.isPending ? "Excluindo..." : "Excluir apenas esta"}
+          </Button>
+          <AlertDialogAction
+            onClick={handleDeleteAllInstallments}
+            disabled={deleteAllInstallmentsMutation.isPending}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {deleteAllInstallmentsMutation.isPending ? "Excluindo..." : "Excluir todas as parcelas"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

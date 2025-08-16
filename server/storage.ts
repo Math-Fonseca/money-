@@ -292,6 +292,26 @@ export class MemStorage implements IStorage {
     let deleted = false;
     
     // Delete the parent transaction (first installment)
+    if (this.transactions.delete(parentId)) {
+      deleted = true;
+    }
+    
+    // Delete all installment instances (children)
+    const transactionEntries = Array.from(this.transactions.entries());
+    for (const [id, transaction] of transactionEntries) {
+      if (transaction.parentTransactionId === parentId) {
+        this.transactions.delete(id);
+        deleted = true;
+      }
+    }
+    
+    return deleted;
+  }
+
+  async deleteInstallmentTransactions(parentId: string): Promise<boolean> {
+    let deleted = false;
+    
+    // Delete the parent transaction (first installment)
     const parentTransaction = this.transactions.get(parentId);
     if (parentTransaction && (parentTransaction.installments || 0) > 1) {
       
