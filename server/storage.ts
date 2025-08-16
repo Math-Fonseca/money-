@@ -10,7 +10,9 @@ import {
   type CreditCard,
   type InsertCreditCard,
   type Subscription,
-  type InsertSubscription
+  type InsertSubscription,
+  type CreditCardInvoice,
+  type InsertCreditCardInvoice
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 

@@ -66,6 +66,20 @@ export const subscriptions = pgTable("subscriptions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const creditCardInvoices = pgTable("credit_card_invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  creditCardId: varchar("credit_card_id").notNull().references(() => creditCards.id, { onDelete: "cascade" }),
+  dueDate: varchar("due_date").notNull(),
+  totalAmount: varchar("total_amount").notNull().default("0"),
+  paidAmount: varchar("paid_amount").notNull().default("0"),
+  status: varchar("status").notNull().default("pending"), // pending, paid, partial, overdue
+  isInstallment: boolean("is_installment").default(false),
+  installmentCount: integer("installment_count"),
+  installmentNumber: integer("installment_number"),
+  parentInvoiceId: varchar("parent_invoice_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Expanded icon options with more categories
 export const iconOptionsSchema = z.object({
   income: z.array(z.string()).default([
@@ -183,6 +197,11 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   createdAt: true,
 });
 
+export const insertCreditCardInvoiceSchema = createInsertSchema(creditCardInvoices).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type Category = typeof categories.$inferSelect;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type Transaction = typeof transactions.$inferSelect;
@@ -195,3 +214,5 @@ export type CreditCard = typeof creditCards.$inferSelect;
 export type InsertCreditCard = z.infer<typeof insertCreditCardSchema>;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+export type CreditCardInvoice = typeof creditCardInvoices.$inferSelect;
+export type InsertCreditCardInvoice = z.infer<typeof insertCreditCardInvoiceSchema>;

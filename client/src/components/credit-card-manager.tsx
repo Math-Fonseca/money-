@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, CreditCard, Trash2 } from "lucide-react";
+import { Plus, CreditCard, Trash2, FileText } from "lucide-react";
+import CreditCardInvoiceModal from "./credit-card-invoice-modal";
 
 // Form schema para cartões de crédito
 const creditCardFormSchema = z.object({
@@ -66,6 +67,8 @@ interface CreditCard {
 
 export default function CreditCardManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [selectedCreditCard, setSelectedCreditCard] = useState<CreditCard | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -357,7 +360,11 @@ export default function CreditCardManager() {
             const remainingLimit = parseFloat(card.limit) - parseFloat(card.currentUsed);
 
             return (
-              <Card key={card.id} className="relative overflow-hidden">
+              <Card 
+                key={card.id} 
+                className="relative overflow-hidden cursor-pointer hover:shadow-lg transition-shadow" 
+                onClick={() => handleCardClick(card)}
+              >
                 <div 
                   className="absolute top-0 left-0 w-full h-1"
                   style={{ backgroundColor: bankInfo.color }}
@@ -368,14 +375,31 @@ export default function CreditCardManager() {
                       <span style={{ color: brandInfo.color }}>{brandInfo.icon}</span>
                       <CardTitle className="text-lg">{card.name}</CardTitle>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteCardMutation.mutate(card.id)}
-                      disabled={deleteCardMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCardClick(card);
+                        }}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteCardMutation.mutate(card.id);
+                        }}
+                        disabled={deleteCardMutation.isPending}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <CardDescription>
                     {brandInfo.name} • {bankInfo.name}
@@ -388,10 +412,15 @@ export default function CreditCardManager() {
                         <span>Usado: {formatCurrency(card.currentUsed)}</span>
                         <span>Limite: {formatCurrency(card.limit)}</span>
                       </div>
-                      <Progress 
-                        value={usagePercentage} 
-                        className="h-2"
-                      />
+                      <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full transition-all duration-300 rounded-full"
+                          style={{ 
+                            width: `${Math.min(usagePercentage, 100)}%`,
+                            backgroundColor: usagePercentage >= 90 ? '#EF4444' : usagePercentage >= 70 ? '#F59E0B' : '#10B981'
+                          }}
+                        />
+                      </div>
                       <p className="text-sm text-gray-600 mt-1">
                         Disponível: {formatCurrency(remainingLimit.toString())}
                       </p>
@@ -420,6 +449,26 @@ export default function CreditCardManager() {
           })}
         </div>
       )}
+
+      <CreditCardInvoiceModal
+        creditCard={selectedCreditCard}
+        isOpen={isInvoiceModalOpen}
+        onClose={() => {
+          setIsInvoiceModalOpen(false);
+          setSelectedCreditCard(null);
+        }}
+      />
     </div>
   );
+
+  function handleCardClick(card: CreditCard) {
+    setSelectedCreditCard(card);
+    setIsInvoiceModalOpen(true);
+  }
+
+  function getUsageColor(percentage: number) {
+    if (percentage >= 90) return "text-red-600";
+    if (percentage >= 70) return "text-yellow-600";
+    return "text-green-600";
+  }
 }
