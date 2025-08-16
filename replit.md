@@ -91,6 +91,13 @@ UI Language: Portuguese (Brazilian).
 
 # Recent Changes (August 2025)
 
+## Subscription System Integration Fixes (August 16, 2025)
+- **Fixed critical integration bugs**: Subscriptions now properly integrate with both credit card invoices and dashboard financial summary
+- **Active/inactive filtering**: Only active subscriptions appear in credit card invoices and consume credit limits
+- **Payment method accuracy**: Non-credit subscriptions (debit, PIX, etc.) properly tracked as general expenses in dashboard
+- **Subscription editing**: Complete edit functionality with form pre-population and endpoint integration
+- **Cache synchronization**: All subscription operations properly invalidate financial summary queries
+
 ## VT/VR Calculation Enhancement
 - Implemented precise working days calculation excluding Brazilian national holidays, São Paulo state holidays, and São Paulo municipal holidays
 - Easter-based holidays (Good Friday, Corpus Christi) automatically calculated for any year

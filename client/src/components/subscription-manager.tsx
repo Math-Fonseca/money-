@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Smartphone, Trash2, Calendar } from "lucide-react";
+import { Plus, Smartphone, Trash2, Calendar, Pencil } from "lucide-react";
 
 // Form schema para assinaturas
 const subscriptionFormSchema = z.object({
@@ -94,6 +94,7 @@ interface Category {
 
 export default function SubscriptionManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -124,20 +125,28 @@ export default function SubscriptionManager() {
 
   const createSubscriptionMutation = useMutation({
     mutationFn: (data: SubscriptionFormData) => {
-      return apiRequest("POST", "/api/subscriptions", {
+      const formattedData = {
         ...data,
         amount: parseFloat(data.amount.replace(/[^\d,.-]/g, '').replace(',', '.')).toString(),
         categoryId: data.categoryId === "none" ? null : data.categoryId,
-      });
+      };
+      
+      if (editingSubscription) {
+        return apiRequest("PUT", `/api/subscriptions/${editingSubscription.id}`, formattedData);
+      } else {
+        return apiRequest("POST", "/api/subscriptions", formattedData);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
       setIsDialogOpen(false);
+      setEditingSubscription(null);
       form.reset();
       toast({
-        title: "Assinatura cadastrada!",
-        description: "Assinatura adicionada com sucesso.",
+        title: editingSubscription ? "Assinatura atualizada!" : "Assinatura cadastrada!",
+        description: editingSubscription ? "Assinatura atualizada com sucesso." : "Assinatura adicionada com sucesso.",
       });
     },
     onError: () => {
@@ -155,6 +164,7 @@ export default function SubscriptionManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
       toast({
         title: "Assinatura atualizada",
         description: "Status da assinatura foi alterado.",
@@ -174,6 +184,7 @@ export default function SubscriptionManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
       toast({
         title: "Assinatura removida",
         description: "Assinatura removida com sucesso.",
@@ -189,7 +200,33 @@ export default function SubscriptionManager() {
   });
 
   const onSubmit = (data: SubscriptionFormData) => {
-    createSubscriptionMutation.mutate(data);
+    if (editingSubscription) {
+      // Atualizando assinatura existente usando a mesma mutation
+      createSubscriptionMutation.mutate(data);
+    } else {
+      // Criando nova assinatura
+      createSubscriptionMutation.mutate(data);
+    }
+  };
+
+  const openEditDialog = (subscription: Subscription) => {
+    setEditingSubscription(subscription);
+    form.reset({
+      name: subscription.name,
+      service: subscription.service,
+      amount: subscription.amount,
+      billingDate: subscription.billingDate,
+      categoryId: subscription.categoryId || "",
+      paymentMethod: subscription.paymentMethod,
+      creditCardId: subscription.creditCardId || "",
+    });
+    setIsDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+    setEditingSubscription(null);
+    form.reset();
   };
 
   const formatCurrency = (amount: string) => {
@@ -255,7 +292,9 @@ export default function SubscriptionManager() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Cadastrar Assinatura</DialogTitle>
+              <DialogTitle>
+                {editingSubscription ? "Editar Assinatura" : "Cadastrar Assinatura"}
+              </DialogTitle>
             </DialogHeader>
             
             <Form {...form}>
@@ -426,11 +465,11 @@ export default function SubscriptionManager() {
                 />
 
                 <div className="flex justify-end gap-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button type="button" variant="outline" onClick={closeDialog}>
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={createSubscriptionMutation.isPending}>
-                    {createSubscriptionMutation.isPending ? "Salvando..." : "Salvar"}
+                    {createSubscriptionMutation.isPending ? "Salvando..." : editingSubscription ? "Atualizar" : "Salvar"}
                   </Button>
                 </div>
               </form>
@@ -526,6 +565,13 @@ export default function SubscriptionManager() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => openEditDialog(subscription)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => deleteSubscriptionMutation.mutate(subscription.id)}
                               disabled={deleteSubscriptionMutation.isPending}
                             >
@@ -601,6 +647,13 @@ export default function SubscriptionManager() {
                                 })
                               }
                             />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditDialog(subscription)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"

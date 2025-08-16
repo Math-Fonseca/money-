@@ -767,10 +767,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         t.date <= endDate
       );
       
-      // Buscar assinaturas ativas do cartão
+      // Buscar apenas assinaturas ATIVAS do cartão
       const subscriptions = await storage.getActiveSubscriptions();
       const cardSubscriptions = subscriptions.filter(s => 
-        s.paymentMethod === 'credito' && s.creditCardId === cardId
+        s.paymentMethod === 'credito' && s.creditCardId === cardId && s.isActive
       );
       
       // Converter assinaturas em transações virtuais para a fatura
