@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import NavigationTabs from "@/components/navigation-tabs";
 import FinancialSummary from "@/components/financial-summary";
 import IncomeForm from "@/components/income-form";
@@ -13,6 +13,7 @@ import SubscriptionManager from "@/components/subscription-manager";
 import { CategoryManager } from "@/components/category-manager";
 import UserProfile from "@/components/user-profile";
 import MonthProgress from "@/components/month-progress";
+import WelcomeTutorial from "@/components/welcome-tutorial";
 import { useQuery } from "@tanstack/react-query";
 
 interface DashboardProps {
@@ -25,6 +26,20 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  // Verificar se é o primeiro acesso do usuário
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem(`tutorial_seen_${userData.email}`);
+    if (!hasSeenTutorial) {
+      setShowTutorial(true);
+    }
+  }, [userData.email]);
+
+  const handleCloseTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem(`tutorial_seen_${userData.email}`, 'true');
+  };
   
   const { data: summary, refetch: refetchSummary } = useQuery<{
     totalIncome: number;
@@ -174,6 +189,12 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
           <SettingsManager />
         )}
       </div>
+      
+      {/* Tutorial de boas-vindas */}
+      <WelcomeTutorial 
+        isOpen={showTutorial} 
+        onClose={handleCloseTutorial} 
+      />
     </div>
   );
 }
