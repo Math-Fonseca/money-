@@ -98,9 +98,47 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
     if (!transactions) return [];
     
     const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentDate = now.getDate();
     
     return transactions.filter(transaction => {
       const transactionDate = new Date(transaction.date);
+      
+      // Period filter - fix date ranges to be year-aware
+      if (filters.period !== "all") {
+        let startDate: Date;
+        
+        switch (filters.period) {
+          case "last7":
+            startDate = new Date();
+            startDate.setDate(currentDate - 7);
+            break;
+          case "last30":
+            startDate = new Date();
+            startDate.setDate(currentDate - 30);
+            break;
+          case "last3months":
+            startDate = new Date(currentYear, currentMonth - 3, currentDate);
+            break;
+          case "currentMonth":
+            startDate = new Date(currentYear, currentMonth, 1);
+            break;
+          case "lastMonth":
+            startDate = new Date(currentYear, currentMonth - 1, 1);
+            const endDate = new Date(currentYear, currentMonth, 0); // Last day of previous month
+            if (transactionDate < startDate || transactionDate > endDate) {
+              return false;
+            }
+            break;
+          default:
+            startDate = new Date(0); // Beginning of time
+        }
+        
+        if (filters.period !== "lastMonth" && transactionDate < startDate) {
+          return false;
+        }
+      }
       
       // Search filter
       if (filters.search && !transaction.description.toLowerCase().includes(filters.search.toLowerCase())) {
@@ -194,11 +232,11 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os períodos</SelectItem>
-                <SelectItem value="current-month">Mês atual</SelectItem>
-                <SelectItem value="last-month">Mês passado</SelectItem>
-                <SelectItem value="last-30-days">Últimos 30 dias</SelectItem>
-                <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
-                <SelectItem value="this-year">Este ano</SelectItem>
+                <SelectItem value="currentMonth">Mês atual</SelectItem>
+                <SelectItem value="lastMonth">Mês passado</SelectItem>
+                <SelectItem value="last30">Últimos 30 dias</SelectItem>
+                <SelectItem value="last3months">Últimos 3 meses</SelectItem>
+                <SelectItem value="last7">Últimos 7 dias</SelectItem>
               </SelectContent>
             </Select>
 
@@ -274,36 +312,37 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
                         }`}>
                           {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                         </p>
-                        <p className="text-sm text-gray-500 capitalize">
-                          {transaction.type === 'income' ? 'Receita' : 'Despesa'}
-                        </p>
+                        <p className="text-sm text-gray-500 capitalize">{transaction.type}</p>
                       </div>
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Excluir transação</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja excluir a transação "{transaction.description}"? 
-                              Esta ação não pode ser desfeita.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteTransactionMutation.mutate(transaction.id)}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-600">
+                          ✏️
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-red-600">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir transação</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteTransactionMutation.mutate(transaction.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   </div>
                 );

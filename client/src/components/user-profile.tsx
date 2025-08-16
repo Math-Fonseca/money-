@@ -72,7 +72,7 @@ export default function UserProfile({ userData, onUpdateProfile, onLogout }: Use
         <DialogTrigger asChild>
           <button className="flex items-center gap-3 hover:bg-gray-100 rounded-lg p-2 transition-colors">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={userData.profileImage} alt={userData.name} />
+              <AvatarImage src={form.watch("profileImage") || userData.profileImage} alt={userData.name} />
               <AvatarFallback className="bg-primary text-white">
                 {getInitials(userData.name)}
               </AvatarFallback>

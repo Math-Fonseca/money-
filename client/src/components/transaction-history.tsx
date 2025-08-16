@@ -250,7 +250,10 @@ export default function TransactionHistory({
                     </p>
                     <p className="text-sm text-gray-600">{formatDate(transaction.date)}</p>
                   </div>
-                  <div className="ml-4">
+                  <div className="ml-4 flex gap-2">
+                    <Button variant="ghost" size="sm" className="text-gray-400 hover:text-blue-600">
+                      ✏️
+                    </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="sm" className="text-gray-400 hover:text-red-600">

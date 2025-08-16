@@ -45,9 +45,6 @@ export default function FinancialSummary({ summary }: FinancialSummaryProps) {
                 {summary?.monthlyVR && summary.monthlyVR > 0 && (
                   <div>VR: {formatCurrency(summary.monthlyVR)}</div>
                 )}
-                {summary?.transactionIncome && summary.transactionIncome > 0 && (
-                  <div>Outras receitas: {formatCurrency(summary.transactionIncome)}</div>
-                )}
               </div>
             )}
           </div>
