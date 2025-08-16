@@ -649,37 +649,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Include salary, VT and VR in total income
       const totalIncome = transactionIncome + monthlySalary + monthlyVT + monthlyVR;
       
-      // Calcular despesas das transações
-      const transactionExpenses = transactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      // Calcular despesas das transações - IMPORTANTE: Cartões de crédito devem ser contabilizados no mês de vencimento da fatura
+      let transactionExpenses = 0;
       
-      // Calcular despesas das assinaturas ativas no mês
+      // Buscar todos os cartões de crédito para aplicar lógica de ciclo de faturamento
+      const creditCards = await storage.getCreditCards();
+      
+      // Primeiro, calcular transações que NÃO são de cartão de crédito (contabilizadas normalmente)
+      const nonCreditTransactions = transactions.filter(t => t.type === 'expense' && !t.creditCardId);
+      transactionExpenses += nonCreditTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      
+      // Depois, buscar transações de cartão de crédito que devem aparecer NESTE mês baseado no ciclo de faturamento
+      for (const card of creditCards) {
+        const cardTransactions = await storage.getTransactions();
+        
+        // Para cada transação de cartão, verificar se ela deve ser contabilizada neste mês
+        const relevantCardTransactions = cardTransactions.filter(t => {
+          if (t.type !== 'expense' || t.creditCardId !== card.id) return false;
+          
+          // Calcular em que mês esta transação deve aparecer na fatura
+          const transactionDate = new Date(t.date);
+          const closingDay = card.closingDay || 1;
+          
+          // Se a compra foi feita ANTES do fechamento, vai para a fatura do mês seguinte
+          // Se foi feita DEPOIS do fechamento, vai para a fatura do mês seguinte ao seguinte
+          let invoiceMonth = transactionDate.getMonth() + 1; // mês seguinte
+          let invoiceYear = transactionDate.getFullYear();
+          
+          // Se a compra foi feita após o dia de fechamento do mês atual, empurra para o próximo mês
+          if (transactionDate.getDate() > closingDay) {
+            invoiceMonth += 1;
+          }
+          
+          // Ajustar ano se necessário
+          if (invoiceMonth > 12) {
+            invoiceMonth = 1;
+            invoiceYear += 1;
+          }
+          
+          // Verificar se esta transação deve aparecer no mês que estamos calculando
+          return invoiceMonth === targetMonth && invoiceYear === targetYear;
+        });
+        
+        // Somar transações relevantes deste cartão
+        transactionExpenses += relevantCardTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      }
+      
+      // Calcular despesas das assinaturas ativas no mês - aplicando lógica de cartão de crédito quando necessário
       const subscriptions = await storage.getActiveSubscriptions();
-      const subscriptionExpenses = subscriptions.reduce((sum, sub) => {
-        return sum + parseFloat(sub.amount);
-      }, 0);
+      let subscriptionExpenses = 0;
+      
+      for (const sub of subscriptions) {
+        // Se a assinatura é paga via cartão de crédito, aplicar lógica de ciclo de faturamento
+        if (sub.paymentMethod === 'credito' && sub.creditCardId) {
+          const card = creditCards.find(c => c.id === sub.creditCardId);
+          if (card) {
+            const closingDay = card.closingDay || 1;
+            const billingDate = sub.billingDate || 1;
+            
+            // Calcular em que mês a assinatura deve aparecer baseado no ciclo de faturamento
+            let invoiceMonth = targetMonth;
+            let invoiceYear = targetYear;
+            
+            // Se a data de cobrança da assinatura é depois do fechamento do cartão,
+            // ela aparece na fatura do mês seguinte
+            if (billingDate > closingDay) {
+              invoiceMonth -= 1;
+              if (invoiceMonth < 1) {
+                invoiceMonth = 12;
+                invoiceYear -= 1;
+              }
+            }
+            
+            // A assinatura deve ser contabilizada neste mês se a data de cobrança se alinha
+            subscriptionExpenses += parseFloat(sub.amount);
+          }
+        } else {
+          // Assinaturas não pagas via cartão de crédito são contabilizadas normalmente
+          subscriptionExpenses += parseFloat(sub.amount);
+        }
+      }
       
       const totalExpenses = transactionExpenses + subscriptionExpenses;
       
       const currentBalance = totalIncome - totalExpenses;
       
-      // Calculate expenses by category (incluindo assinaturas)
-      const expensesByCategory = transactions
-        .filter(t => t.type === 'expense')
-        .reduce((acc: Record<string, number>, t) => {
-          if (t.categoryId) {
-            acc[t.categoryId] = (acc[t.categoryId] || 0) + parseFloat(t.amount);
-          }
-          return acc;
-        }, {});
+      // Calculate expenses by category (incluindo assinaturas) - aplicando a mesma lógica de ciclo de faturamento
+      const expensesByCategory: Record<string, number> = {};
       
-      // Adicionar assinaturas às categorias
-      subscriptions.forEach(sub => {
-        if (sub.categoryId) {
-          expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
+      // Adicionar transações que NÃO são de cartão de crédito
+      nonCreditTransactions.forEach(t => {
+        if (t.categoryId) {
+          expensesByCategory[t.categoryId] = (expensesByCategory[t.categoryId] || 0) + parseFloat(t.amount);
         }
       });
+      
+      // Adicionar transações de cartão de crédito baseado no ciclo de faturamento
+      for (const card of creditCards) {
+        const cardTransactions = await storage.getTransactions();
+        
+        const relevantCardTransactions = cardTransactions.filter(t => {
+          if (t.type !== 'expense' || t.creditCardId !== card.id) return false;
+          
+          const transactionDate = new Date(t.date);
+          const closingDay = card.closingDay || 1;
+          
+          let invoiceMonth = transactionDate.getMonth() + 1;
+          let invoiceYear = transactionDate.getFullYear();
+          
+          if (transactionDate.getDate() > closingDay) {
+            invoiceMonth += 1;
+          }
+          
+          if (invoiceMonth > 12) {
+            invoiceMonth = 1;
+            invoiceYear += 1;
+          }
+          
+          return invoiceMonth === targetMonth && invoiceYear === targetYear;
+        });
+        
+        relevantCardTransactions.forEach(t => {
+          if (t.categoryId) {
+            expensesByCategory[t.categoryId] = (expensesByCategory[t.categoryId] || 0) + parseFloat(t.amount);
+          }
+        });
+      }
+      
+      // Adicionar assinaturas às categorias - aplicando a mesma lógica de ciclo de faturamento
+      for (const sub of subscriptions) {
+        if (sub.categoryId) {
+          // Se a assinatura é paga via cartão de crédito, aplicar lógica de ciclo de faturamento
+          if (sub.paymentMethod === 'credito' && sub.creditCardId) {
+            const card = creditCards.find(c => c.id === sub.creditCardId);
+            if (card) {
+              const closingDay = card.closingDay || 1;
+              const billingDate = sub.billingDate || 1;
+              
+              let invoiceMonth = targetMonth;
+              let invoiceYear = targetYear;
+              
+              if (billingDate > closingDay) {
+                invoiceMonth -= 1;
+                if (invoiceMonth < 1) {
+                  invoiceMonth = 12;
+                  invoiceYear -= 1;
+                }
+              }
+              
+              // Adicionar assinatura à categoria se deve aparecer neste mês
+              expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
+            }
+          } else {
+            // Assinaturas não pagas via cartão de crédito são contabilizadas normalmente
+            expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
+          }
+        }
+      }
       
       res.json({
         totalIncome,
