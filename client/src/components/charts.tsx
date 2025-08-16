@@ -45,7 +45,13 @@ export default function Charts({ summary, categories, transactions }: ChartsProp
           const monthStart = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
           const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0];
           
-          const monthTransactions = transactions.filter(t => t.date >= monthStart && t.date <= monthEnd);
+          const monthTransactions = transactions.filter(t => {
+            const transactionDate = new Date(t.date);
+            const startDate = new Date(monthStart);
+            const endDate = new Date(monthEnd);
+            return transactionDate >= startDate && transactionDate <= endDate;
+          });
+          
           const monthIncome = monthTransactions
             .filter(t => t.type === 'income')
             .reduce((sum, t) => sum + parseFloat(t.amount), 0);

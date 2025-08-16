@@ -190,9 +190,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const transactions = await storage.getTransactionsByDateRange(startDate, endDate);
       
-      const totalIncome = transactions
+      // Get salary setting
+      const settings = await storage.getSettings();
+      const salarySetting = settings.find(s => s.key === 'salary');
+      const monthlySalary = salarySetting ? parseFloat(salarySetting.value) : 0;
+      
+      const transactionIncome = transactions
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      
+      // Include salary in total income
+      const totalIncome = transactionIncome + monthlySalary;
       
       const totalExpenses = transactions
         .filter(t => t.type === 'expense')
@@ -215,6 +223,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalExpenses,
         currentBalance,
         expensesByCategory,
+        monthlySalary,
+        transactionIncome,
         transactions: transactions.slice(0, 10), // Recent transactions
       });
     } catch (error) {

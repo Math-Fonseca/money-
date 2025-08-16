@@ -3,6 +3,8 @@ interface FinancialSummaryProps {
     totalIncome: number;
     totalExpenses: number;
     currentBalance: number;
+    monthlySalary?: number;
+    transactionIncome?: number;
   };
 }
 
@@ -30,6 +32,14 @@ export default function FinancialSummary({ summary }: FinancialSummaryProps) {
             <p className="text-2xl font-bold text-secondary">
               {summary ? formatCurrency(summary.totalIncome) : "R$ 0,00"}
             </p>
+            {summary?.monthlySalary && summary.monthlySalary > 0 && (
+              <div className="text-xs text-gray-500 mt-1 space-y-1">
+                <div>Salário: {formatCurrency(summary.monthlySalary)}</div>
+                {summary.transactionIncome && summary.transactionIncome > 0 && (
+                  <div>Outras receitas: {formatCurrency(summary.transactionIncome)}</div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -58,9 +68,12 @@ export default function FinancialSummary({ summary }: FinancialSummaryProps) {
             </div>
           </div>
           <div className="ml-4 flex-1">
-            <p className="text-sm font-medium text-gray-600">Saldo Atual</p>
-            <p className="text-2xl font-bold text-primary">
+            <p className="text-sm font-medium text-gray-600">Saldo do Mês</p>
+            <p className={`text-2xl font-bold ${summary && summary.currentBalance >= 0 ? 'text-primary' : 'text-error'}`}>
               {summary ? formatCurrency(summary.currentBalance) : "R$ 0,00"}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Receitas - Despesas
             </p>
           </div>
         </div>
@@ -74,9 +87,12 @@ export default function FinancialSummary({ summary }: FinancialSummaryProps) {
             </div>
           </div>
           <div className="ml-4 flex-1">
-            <p className="text-sm font-medium text-gray-600">Projeção Mensal</p>
-            <p className="text-2xl font-bold text-accent">
-              {formatCurrency(monthlyProjection)}
+            <p className="text-sm font-medium text-gray-600">Situação Financeira</p>
+            <p className={`text-2xl font-bold ${monthlyProjection >= 0 ? 'text-primary' : 'text-error'}`}>
+              {monthlyProjection >= 0 ? 'Positiva' : 'Negativa'}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {formatCurrency(Math.abs(monthlyProjection))} {monthlyProjection >= 0 ? 'de sobra' : 'em déficit'}
             </p>
           </div>
         </div>

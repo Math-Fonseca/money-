@@ -64,6 +64,7 @@ export default function SettingsManager() {
         description: "As configurações foram salvas com sucesso!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
     },
     onError: () => {
       toast({
