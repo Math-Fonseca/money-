@@ -201,7 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Create additional installments
-        const installmentAmount = parseFloat(transactionData.amount) / transactionData.installments;
+        const installmentAmount = parseFloat(transactionData.amount);
         const promises = [];
         
         for (let i = 2; i <= transactionData.installments; i++) {
@@ -223,7 +223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const creditCard = await storage.getCreditCardById(parentTransaction.creditCardId);
           if (creditCard) {
             const currentUsed = parseFloat(creditCard.currentUsed || "0");
-            const totalAmount = parseFloat(transactionData.amount); // Valor total da transação
+            const totalAmount = parseFloat(transactionData.amount) * transactionData.installments; // Valor total: valor x número de parcelas
             const newCurrentUsed = currentUsed + totalAmount;
             
             await storage.updateCreditCard(parentTransaction.creditCardId, {
@@ -233,11 +233,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         await Promise.all(promises);
-        
-        // Update parent transaction amount to be the installment amount
-        await storage.updateTransaction(parentTransaction.id, {
-          amount: installmentAmount.toFixed(2),
-        });
         
         res.status(201).json(parentTransaction);
       } else {
