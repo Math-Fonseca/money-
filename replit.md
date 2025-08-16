@@ -58,6 +58,11 @@ UI Language: Portuguese (Brazilian).
 - **Neon Database**: Serverless PostgreSQL hosting (@neondatabase/serverless)
 - **Connection**: Environment-based DATABASE_URL configuration
 
+## Object Storage
+- **Replit Object Storage**: Cloud storage for file uploads and assets
+- **Google Cloud Storage**: Backend storage infrastructure
+- **Uppy**: Modern file upload library with React integration
+
 ## UI and Design
 - **Radix UI**: Comprehensive set of accessible UI primitives
 - **Tailwind CSS**: Utility-first CSS framework for styling
@@ -83,3 +88,29 @@ UI Language: Portuguese (Brazilian).
 - **Date-fns**: Modern JavaScript date utility library
 - **Class Variance Authority**: Utility for building type-safe component variants
 - **CLSX**: Utility for constructing className strings conditionally
+
+# Recent Changes (August 2025)
+
+## VT/VR Calculation Enhancement
+- Implemented precise working days calculation excluding Brazilian national holidays, São Paulo state holidays, and São Paulo municipal holidays
+- Easter-based holidays (Good Friday, Corpus Christi) automatically calculated for any year
+- Monthly VT/VR now varies based on actual working days per month
+
+## Chart and Data Visualization
+- Charts now follow selected month/year instead of fixed March-August range  
+- Month labels include year format (ex: "ago/25" for August 2025)
+- Fixed data leakage between months - each period shows only its own transactions
+
+## Recurring Transactions
+- Automatic propagation of recurring income/expenses to future months (24 months ahead)
+- Recurring transactions linked via parentTransactionId for tracking
+
+## Profile Management
+- Object storage configured for future real file uploads
+- Profile photo upload functional with file selection and preview update
+- Avatar generation using DiceBear API as placeholder
+
+## Year Support
+- System supports unlimited years (not restricted to 2024-2026)
+- All calculations work dynamically for any year selected
+- Historical and future data handled seamlessly

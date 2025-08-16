@@ -45,6 +45,7 @@ export default function Charts({ summary, categories, transactions, selectedMont
           for (let i = 5; i >= 0; i--) {
             const targetDate = new Date(selectedYear, selectedMonth - 1 - i, 1);
             const monthName = targetDate.toLocaleDateString('pt-BR', { month: 'short' });
+            const yearShort = targetDate.getFullYear().toString().slice(-2);
             const month = targetDate.getMonth() + 1;
             const year = targetDate.getFullYear();
             
@@ -53,13 +54,13 @@ export default function Charts({ summary, categories, transactions, selectedMont
               const data = await response.json();
               
               monthlyData.push({
-                monthName,
+                monthName: `${monthName}/${yearShort}`,
                 income: data.totalIncome || 0,
                 expenses: data.totalExpenses || 0
               });
             } catch (error) {
               monthlyData.push({
-                monthName,
+                monthName: `${monthName}/${yearShort}`,
                 income: 0,
                 expenses: 0
               });

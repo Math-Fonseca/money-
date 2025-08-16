@@ -93,7 +93,7 @@ export default function UserProfile({ userData, onUpdateProfile, onLogout }: Use
             <div className="flex flex-col items-center gap-4">
               <div className="relative">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={userData.profileImage} alt={userData.name} />
+                  <AvatarImage src={form.watch("profileImage") || userData.profileImage} alt={userData.name} />
                   <AvatarFallback className="bg-primary text-white text-lg">
                     {getInitials(userData.name)}
                   </AvatarFallback>

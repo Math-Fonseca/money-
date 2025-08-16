@@ -128,11 +128,6 @@ export class MemStorage implements IStorage {
 
   async deleteCategory(id: string): Promise<boolean> {
     return this.categories.delete(id);
-    return updated;
-  }
-
-  async deleteCategory(id: string): Promise<boolean> {
-    return this.categories.delete(id);
   }
 
   // Transactions
@@ -173,7 +168,39 @@ export class MemStorage implements IStorage {
       createdAt: new Date()
     };
     this.transactions.set(id, newTransaction);
+
+    // If it's a recurring transaction, create future instances
+    if (transaction.isRecurring) {
+      await this.createRecurringInstances(newTransaction);
+    }
+    
     return newTransaction;
+  }
+
+  private async createRecurringInstances(baseTransaction: Transaction): Promise<void> {
+    const startDate = new Date(baseTransaction.date);
+    const currentYear = new Date().getFullYear();
+    
+    // Create instances for the next 24 months from the start date
+    for (let i = 1; i <= 24; i++) {
+      const nextDate = new Date(startDate);
+      nextDate.setMonth(startDate.getMonth() + i);
+      
+      // Stop if we go too far into the future (more than 2 years)
+      if (nextDate.getFullYear() > currentYear + 2) break;
+      
+      const recurringId = randomUUID();
+      const recurringTransaction: Transaction = {
+        ...baseTransaction,
+        id: recurringId,
+        date: nextDate.toISOString().split('T')[0],
+        parentTransactionId: baseTransaction.id,
+        installmentNumber: baseTransaction.installmentNumber || 1,
+        createdAt: new Date()
+      };
+      
+      this.transactions.set(recurringId, recurringTransaction);
+    }
   }
 
   async updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction | undefined> {
