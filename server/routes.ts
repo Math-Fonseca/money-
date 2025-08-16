@@ -1033,11 +1033,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: newStatus
       });
       
-      // Atualizar o limite usado do cartão (descontar o valor pago)
+      // Atualizar o limite usado do cartão após pagamento
       const creditCard = await storage.getCreditCardById(invoice.creditCardId);
       if (creditCard) {
         const currentUsed = parseFloat(creditCard.currentUsed || "0");
-        const newCurrentUsed = Math.max(0, currentUsed - paymentAmount);
+        let newCurrentUsed = Math.max(0, currentUsed - paymentAmount);
+        
+        // Se o pagamento quitou totalmente a fatura, precisamos considerar as assinaturas do próximo mês
+        if (newStatus === "paid") {
+          // Buscar assinaturas ativas deste cartão para reservar o limite para o próximo mês
+          const subscriptions = await storage.getActiveSubscriptions();
+          const cardSubscriptions = subscriptions.filter(s => 
+            s.paymentMethod === 'credito' && 
+            s.creditCardId === invoice.creditCardId && 
+            s.isActive
+          );
+          
+          // Calcular valor total das assinaturas para reservar no limite
+          const nextMonthSubscriptionAmount = cardSubscriptions.reduce((sum, sub) => {
+            return sum + parseFloat(sub.amount);
+          }, 0);
+          
+          // Reservar o limite para as assinaturas do próximo mês
+          newCurrentUsed += nextMonthSubscriptionAmount;
+          
+          console.log(`Fatura paga totalmente. Limite atualizado considerando assinaturas do próximo mês: R$ ${nextMonthSubscriptionAmount.toFixed(2)}`);
+        }
         
         await storage.updateCreditCard(invoice.creditCardId, {
           currentUsed: newCurrentUsed.toFixed(2)

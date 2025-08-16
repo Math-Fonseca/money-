@@ -336,6 +336,15 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                     </Button>
                   </div>
                   
+                  {/* Informação sobre pagamento total */}
+                  {paymentAmount && parseFloat(paymentAmount) >= (totalInvoiceAmount - (invoice ? parseFloat(invoice.paidAmount) : 0)) && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        <strong>💡 Pagamento Total:</strong> Após quitar esta fatura, o limite será liberado e automaticamente reservado para as assinaturas do próximo mês.
+                      </p>
+                    </div>
+                  )}
+                  
                   <Button
                     onClick={handlePayment}
                     disabled={!paymentAmount || payInvoiceMutation.isPending}
