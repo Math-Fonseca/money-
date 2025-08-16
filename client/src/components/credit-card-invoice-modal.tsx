@@ -147,15 +147,33 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     });
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, invoiceEndDate: Date, totalAmount: number, paidAmount: number) => {
+    const today = new Date();
+    const isAfterClosing = today > invoiceEndDate;
+    
+    // Determinar status baseado na lógica de negócio
+    let finalStatus = status;
+    let label = "Pendente";
+    
+    if (paidAmount >= totalAmount && totalAmount > 0) {
+      finalStatus = "paid";
+      label = "Paga";
+    } else if (isAfterClosing && totalAmount > 0) {
+      finalStatus = "closed";
+      label = "Fechada";
+    } else if (totalAmount === 0) {
+      label = "Sem movimentação";
+    }
+    
     const statusConfig = {
       pending: { label: "Pendente", variant: "secondary" as const, icon: ClockIcon },
       paid: { label: "Paga", variant: "default" as const, icon: CheckCircleIcon },
+      closed: { label: "Fechada", variant: "outline" as const, icon: ClockIcon },
       partial: { label: "Parcial", variant: "outline" as const, icon: DollarSignIcon },
       overdue: { label: "Vencida", variant: "destructive" as const, icon: XCircleIcon },
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const config = statusConfig[finalStatus as keyof typeof statusConfig] || { label, variant: "secondary" as const, icon: ClockIcon };
     const IconComponent = config.icon;
     
     return (
@@ -210,7 +228,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Resumo da Fatura</span>
-                {invoice && getStatusBadge(invoice.status)}
+                {invoice && getStatusBadge(invoice.status, endDate, totalInvoiceAmount, parseFloat(invoice.paidAmount))}
               </CardTitle>
             </CardHeader>
             <CardContent>

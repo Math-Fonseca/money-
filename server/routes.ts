@@ -273,11 +273,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const transactionData = insertTransactionSchema.partial().parse(req.body);
+      
+      // Buscar transação original para calcular diferença no limite do cartão
+      const originalTransaction = await storage.getTransactionById(id);
+      if (!originalTransaction) {
+        res.status(404).json({ message: "Transaction not found" });
+        return;
+      }
+      
       const updatedTransaction = await storage.updateTransaction(id, transactionData);
       
       if (!updatedTransaction) {
         res.status(404).json({ message: "Transaction not found" });
         return;
+      }
+      
+      // Atualizar limite do cartão se necessário
+      if (originalTransaction.creditCardId && originalTransaction.type === 'expense') {
+        const creditCard = await storage.getCreditCardById(originalTransaction.creditCardId);
+        if (creditCard) {
+          const currentUsed = parseFloat(creditCard.currentUsed || "0");
+          const originalAmount = parseFloat(originalTransaction.amount);
+          const newAmount = transactionData.amount ? parseFloat(transactionData.amount) : originalAmount;
+          
+          // Calcular nova utilização: remover valor original e adicionar novo valor
+          const adjustedUsed = currentUsed - originalAmount + newAmount;
+          
+          await storage.updateCreditCard(originalTransaction.creditCardId, {
+            currentUsed: Math.max(0, adjustedUsed).toFixed(2)
+          });
+        }
       }
       
       res.json(updatedTransaction);
