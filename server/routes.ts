@@ -173,6 +173,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const transactionData = insertTransactionSchema.parse(req.body);
       
+      // Verificar limite do cartão de crédito antes de criar a transação
+      if (transactionData.creditCardId && transactionData.type === 'expense') {
+        const creditCard = await storage.getCreditCardById(transactionData.creditCardId);
+        if (creditCard) {
+          const currentUsed = parseFloat(creditCard.currentUsed || "0");
+          const cardLimit = parseFloat(creditCard.limit);
+          const transactionAmount = parseFloat(transactionData.amount);
+          
+          // Verificar se a transação excede o limite disponível
+          if (currentUsed + transactionAmount > cardLimit) {
+            const availableLimit = cardLimit - currentUsed;
+            return res.status(400).json({ 
+              message: "Limite do cartão insuficiente", 
+              error: `Limite disponível: R$ ${availableLimit.toFixed(2)}. Valor da transação: R$ ${transactionAmount.toFixed(2)}` 
+            });
+          }
+        }
+      }
+      
       // Handle installments for credit card purchases
       if (transactionData.installments && transactionData.installments > 1) {
         const parentTransaction = await storage.createTransaction({

@@ -39,6 +39,7 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
     name: string;
     brand: string;
     bank: string;
+    limit: string;
     currentUsed: string;
   }>>({
     queryKey: ["/api/credit-cards"],
@@ -56,17 +57,7 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
 
   const createExpenseMutation = useMutation({
     mutationFn: async (data: ExpenseFormData) => {
-      // Update credit card usage if using credit
-      if (data.paymentMethod === "credito" && data.creditCardId) {
-        const card = creditCards.find(c => c.id === data.creditCardId);
-        if (card) {
-          const newUsed = parseFloat(card.currentUsed || "0") + parseFloat(data.amount);
-          await apiRequest("PUT", `/api/credit-cards/${data.creditCardId}`, {
-            currentUsed: newUsed.toString()
-          });
-        }
-      }
-      
+      // Não atualizar o cartão manualmente aqui - o backend já faz isso
       const response = await apiRequest("POST", "/api/transactions", {
         ...data,
         type: "expense",
@@ -85,16 +76,45 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       queryClient.refetchQueries({ queryKey: ["/api/financial-summary"] });
     },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao cadastrar despesa. Tente novamente.",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      // Verificar se é erro de limite insuficiente
+      if (error.message?.includes("Limite do cartão insuficiente")) {
+        toast({
+          title: "Limite insuficiente",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Erro ao cadastrar despesa. Tente novamente.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
   const onSubmit = (data: ExpenseFormData) => {
+    // Verificar limite do cartão de crédito antes de enviar
+    if (data.paymentMethod === "credito" && data.creditCardId) {
+      const selectedCard = creditCards.find(card => card.id === data.creditCardId);
+      if (selectedCard) {
+        const currentUsed = parseFloat(selectedCard.currentUsed || "0");
+        const cardLimit = parseFloat(selectedCard.limit);
+        const transactionAmount = parseFloat(data.amount);
+        
+        if (currentUsed + transactionAmount > cardLimit) {
+          const availableLimit = cardLimit - currentUsed;
+          toast({
+            title: "Limite insuficiente",
+            description: `Limite disponível: R$ ${availableLimit.toFixed(2)}. Valor da transação: R$ ${transactionAmount.toFixed(2)}`,
+            variant: "destructive",
+          });
+          return; // Não enviar a transação
+        }
+      }
+    }
+
     createExpenseMutation.mutate(data);
   };
 
