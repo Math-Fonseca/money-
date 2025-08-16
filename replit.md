@@ -118,6 +118,14 @@ UI Language: Portuguese (Brazilian).
 - Recurring transaction detection and specialized editing options
 - Full CRUD operations for all transaction types
 
+## Credit Card Installment System (August 16, 2025)
+- Fixed critical bug in installment credit limit calculation
+- Installment transactions now correctly reserve full purchase amount in credit limit
+- Example: R$ 500 in 4x installments correctly uses R$ 500 limit (not R$ 625)
+- Intelligent installment deletion: option to delete single installment or all installments
+- Visual indicators show installment progress (1/4x, 2/4x, etc.) in transaction list
+- Proper credit limit release when installment transactions are deleted
+
 ## Year Support
 - System supports unlimited years (not restricted to 2024-2026)
 - All calculations work dynamically for any year selected

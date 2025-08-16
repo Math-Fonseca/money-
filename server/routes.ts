@@ -197,13 +197,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }));
         }
         
-        // Para parcelamentos, atualizamos o limite usado apenas no momento de cada parcela (não todas de uma vez)
-        // A primeira parcela já foi criada, então atualizamos o limite apenas com o valor da primeira parcela
+        // Para parcelamentos, atualizar o limite usado com o valor total da compra (não apenas a primeira parcela)
+        // O cartão de crédito reserva o limite total, mesmo que seja parcelado
         if (parentTransaction.creditCardId && parentTransaction.type === 'expense') {
           const creditCard = await storage.getCreditCardById(parentTransaction.creditCardId);
           if (creditCard) {
             const currentUsed = parseFloat(creditCard.currentUsed || "0");
-            const newCurrentUsed = currentUsed + installmentAmount;
+            const totalAmount = parseFloat(transactionData.amount); // Valor total da transação
+            const newCurrentUsed = currentUsed + totalAmount;
             
             await storage.updateCreditCard(parentTransaction.creditCardId, {
               currentUsed: newCurrentUsed.toFixed(2)
@@ -344,12 +345,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calcular total para remover do limite do cartão
       const creditCardTransaction = installmentTransactions.find(t => t.creditCardId);
       if (creditCardTransaction && creditCardTransaction.type === 'expense' && creditCardTransaction.creditCardId) {
-        const totalAmount = installmentTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        // Para parcelas, remover o valor total da transação original, não a soma das parcelas
+        const parentTransaction = installmentTransactions.find(t => !t.parentTransactionId);
+        const totalOriginalAmount = parentTransaction ? parseFloat(parentTransaction.amount) * (parentTransaction.installments || 1) : 0;
         const creditCard = await storage.getCreditCardById(creditCardTransaction.creditCardId);
         
         if (creditCard) {
           const currentUsed = parseFloat(creditCard.currentUsed || "0");
-          const newCurrentUsed = Math.max(0, currentUsed - totalAmount);
+          const newCurrentUsed = Math.max(0, currentUsed - totalOriginalAmount);
           
           await storage.updateCreditCard(creditCardTransaction.creditCardId, {
             currentUsed: newCurrentUsed.toFixed(2)
