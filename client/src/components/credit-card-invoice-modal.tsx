@@ -86,6 +86,12 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     enabled: !!creditCard && isOpen,
   });
 
+  // Fetch subscriptions for current invoice period
+  const { data: subscriptions = [] } = useQuery({
+    queryKey: ["/api/subscriptions", "credit-card", creditCard?.id, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
+    enabled: !!creditCard && isOpen,
+  });
+
   // Fetch invoice data
   const { data: invoice = null } = useQuery<CreditCardInvoice | null>({
     queryKey: ["/api/credit-card-invoices", creditCard?.id, format(endDate, 'yyyy-MM-dd')],
@@ -100,8 +106,16 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     new Date(t.date) <= endDate
   ) : [];
 
+  // Filter subscriptions for this credit card
+  const creditCardSubscriptions = Array.isArray(subscriptions) ? subscriptions.filter((s: any) => 
+    s.creditCardId === creditCard?.id &&
+    s.paymentMethod === 'credito'
+  ) : [];
+
   const totalInvoiceAmount = creditCardTransactions.reduce((sum: number, t: Transaction) => 
     sum + parseFloat(t.amount), 0
+  ) + creditCardSubscriptions.reduce((sum: number, s: any) => 
+    sum + parseFloat(s.amount), 0
   );
 
   // Payment mutation
@@ -267,12 +281,13 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                   <CardTitle>Transações da Fatura</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {creditCardTransactions.length === 0 ? (
+                  {creditCardTransactions.length === 0 && creditCardSubscriptions.length === 0 ? (
                     <p className="text-center text-gray-500 py-8">
                       Nenhuma transação encontrada para este período.
                     </p>
                   ) : (
                     <div className="space-y-2">
+                      {/* Transações regulares */}
                       {creditCardTransactions.map((transaction: Transaction) => (
                         <div key={transaction.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
@@ -288,6 +303,24 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                           </div>
                           <p className="font-bold text-red-600">
                             R$ {parseFloat(transaction.amount).toFixed(2)}
+                          </p>
+                        </div>
+                      ))}
+                      
+                      {/* Assinaturas do cartão */}
+                      {creditCardSubscriptions.map((subscription: any) => (
+                        <div key={subscription.id} className="flex items-center justify-between p-3 border rounded-lg bg-purple-50">
+                          <div>
+                            <p className="font-medium">{subscription.name}</p>
+                            <p className="text-sm text-gray-600">
+                              Assinatura mensal
+                              <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                                Recorrente
+                              </span>
+                            </p>
+                          </div>
+                          <p className="font-bold text-red-600">
+                            R$ {parseFloat(subscription.amount).toFixed(2)}
                           </p>
                         </div>
                       ))}

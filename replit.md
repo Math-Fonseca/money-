@@ -12,6 +12,13 @@ UI Language: Portuguese (Brazilian).
 
 # System Architecture
 
+## Database Architecture
+- **Multi-User Support**: Complete user authentication system with Replit Auth integration
+- **User Association**: All entities (categories, transactions, credit cards, subscriptions, budgets, settings) linked to user IDs
+- **Session Management**: PostgreSQL session storage with automatic cleanup and TTL management
+- **Production Ready**: Neon Database integration with connection pooling and proper schema management
+- **Auth Schema**: Separate authentication schema with user management, session handling, and multi-tenant data isolation
+
 ## Frontend Architecture
 - **Framework**: React 18 with TypeScript and Vite as the build tool
 - **UI Components**: Shadcn/ui component library built on Radix UI primitives
@@ -43,7 +50,9 @@ UI Language: Portuguese (Brazilian).
 - **User Management**: Profile editing with avatar support and logout functionality
 - **Modular Design**: Separate components for forms, charts, summaries, navigation, and authentication
 - **Reusable UI**: Consistent green-themed design system with shadcn/ui components
-- **Responsive Layout**: Mobile-first design with adaptive navigation
+- **Responsive Layout**: Mobile-first design with adaptive navigation, breakpoint-specific layouts, and touch-optimized components
+- **Mobile Navigation**: Horizontal scrolling tabs with icon-only mobile view and full labels for desktop
+- **Financial Cards**: Responsive grid system (2 columns mobile, 4 columns desktop) with text truncation and proper spacing
 - **Form Validation**: Zod schemas shared between client and server
 
 ## Development Workflow
@@ -90,6 +99,16 @@ UI Language: Portuguese (Brazilian).
 - **CLSX**: Utility for constructing className strings conditionally
 
 # Recent Changes (August 2025)
+
+## Multi-User Database Integration and Mobile Responsiveness (August 17, 2025)
+- **Database Schema Updated**: Complete multi-user authentication schema implemented with user association for all entities
+- **Mobile-First Responsive Design**: Dashboard, navigation, and financial summary cards optimized for mobile devices
+- **Credit Card Icon Fixed**: Replaced problematic CreditCard import with CreditCardIcon from Lucide React
+- **Subscriptions in Credit Card Invoices**: Fixed critical bug - subscriptions now appear correctly in credit card invoice modal
+- **Mobile Navigation**: Horizontal scroll navigation with icon-only view for mobile, full labels for desktop
+- **Responsive Financial Cards**: Grid layout adapts from 2 columns on mobile to 4 columns on desktop with proper text truncation
+- **Database Multi-User Ready**: Full schema with user IDs for categories, transactions, credit cards, subscriptions, budgets, settings, and invoices
+- **Production Database Support**: Configured for Neon Database with proper connection pooling and schema management
 
 ## System Rebranding and UI Improvements (August 16, 2025)
 - **System renamed to "Money+"**: Complete rebranding from "Controle Financeiro" to "Money+"

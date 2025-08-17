@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, CreditCard, Trash2, FileText, Edit } from "lucide-react";
+import { Plus, CreditCard as CreditCardIcon, Trash2, FileText, Edit } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import CreditCardInvoiceModal from "./credit-card-invoice-modal";
 
@@ -414,7 +414,7 @@ export default function CreditCardManager() {
       {creditCards.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <CreditCard className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <p className="text-gray-500 mb-4">Nenhum cartão cadastrado ainda</p>
             <p className="text-sm text-gray-400">Cadastre seus cartões para acompanhar os gastos e limites</p>
           </CardContent>
