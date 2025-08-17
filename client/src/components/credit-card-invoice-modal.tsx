@@ -88,7 +88,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
 
   // Fetch subscriptions for current invoice period
   const { data: subscriptions = [] } = useQuery({
-    queryKey: ["/api/subscriptions", "credit-card", creditCard?.id, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
+    queryKey: ["/api/subscriptions/credit-card", creditCard?.id, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
     enabled: !!creditCard && isOpen,
   });
 

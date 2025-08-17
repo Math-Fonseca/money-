@@ -32,16 +32,70 @@ const creditCardFormSchema = z.object({
 
 type CreditCardFormData = z.infer<typeof creditCardFormSchema>;
 
-// Opções de bandeiras de cartão
+// Função para obter informações da bandeira
+const getBrandInfo = (brand: string) => {
+  const brands: { [key: string]: { name: string; icon: JSX.Element; color: string } } = {
+    'mastercard': { 
+      name: 'MasterCard', 
+      icon: <CreditCardIcon size={20} className="text-red-600" />, 
+      color: '#EB001B' 
+    },
+    'visa': { 
+      name: 'Visa', 
+      icon: <CreditCardIcon size={20} className="text-blue-600" />, 
+      color: '#1A1F71' 
+    },
+    'elo': { 
+      name: 'Elo', 
+      icon: <CreditCardIcon size={20} className="text-yellow-600" />, 
+      color: '#FFC700' 
+    },
+    'american-express': { 
+      name: 'American Express', 
+      icon: <CreditCardIcon size={20} className="text-blue-700" />, 
+      color: '#006FCF' 
+    },
+    'hipercard': { 
+      name: 'Hipercard', 
+      icon: <CreditCardIcon size={20} className="text-red-700" />, 
+      color: '#E30613' 
+    }
+  };
+  
+  return brands[brand] || { 
+    name: brand, 
+    icon: <CreditCardIcon size={20} className="text-gray-600" />, 
+    color: '#6B7280' 
+  };
+};
+
+// Opções de bandeiras de cartão para o formulário
 const cardBrands = [
-  { id: 'mastercard', name: 'MasterCard', icon: '💳', color: '#EB001B' },
-  { id: 'visa', name: 'Visa', icon: '💳', color: '#1A1F71' },
-  { id: 'elo', name: 'Elo', icon: '💳', color: '#FFC700' },
-  { id: 'american-express', name: 'American Express', icon: '💳', color: '#006FCF' },
-  { id: 'hipercard', name: 'Hipercard', icon: '💳', color: '#E30613' }
+  { id: 'mastercard', name: 'MasterCard', color: '#EB001B' },
+  { id: 'visa', name: 'Visa', color: '#1A1F71' },
+  { id: 'elo', name: 'Elo', color: '#FFC700' },
+  { id: 'american-express', name: 'American Express', color: '#006FCF' },
+  { id: 'hipercard', name: 'Hipercard', color: '#E30613' }
 ];
 
-// Opções de bancos
+// Função para obter informações do banco
+const getBankInfo = (bank: string) => {
+  const banks: { [key: string]: { name: string; icon: string; color: string } } = {
+    'nubank': { name: 'Nubank', icon: '🏦', color: '#8A05BE' },
+    'itau': { name: 'Itaú', icon: '🏦', color: '#F37900' },
+    'bradesco': { name: 'Bradesco', icon: '🏦', color: '#CC092F' },
+    'santander': { name: 'Santander', icon: '🏦', color: '#EC0000' },
+    'caixa': { name: 'Caixa', icon: '🏦', color: '#0066CC' },
+    'bb': { name: 'Banco do Brasil', icon: '🏦', color: '#FBB040' },
+    'mercado-pago': { name: 'Mercado Pago', icon: '🏦', color: '#009EE3' },
+    'inter': { name: 'Inter', icon: '🏦', color: '#FF7A00' },
+    'c6': { name: 'C6 Bank', icon: '🏦', color: '#FFD500' }
+  };
+  
+  return banks[bank] || { name: bank, icon: '🏦', color: '#6B7280' };
+};
+
+// Opções de bancos para o formulário
 const banks = [
   { id: 'nubank', name: 'Nubank', icon: '🏦', color: '#8A05BE' },
   { id: 'itau', name: 'Itaú', icon: '🏦', color: '#F37900' },
@@ -53,6 +107,13 @@ const banks = [
   { id: 'inter', name: 'Inter', icon: '🏦', color: '#FF7A00' },
   { id: 'c6', name: 'C6 Bank', icon: '🏦', color: '#FFD500' }
 ];
+
+// Função auxiliar para calcular porcentagem de uso
+const getUsagePercentage = (currentUsed: string, limit: string) => {
+  const used = parseFloat(currentUsed || "0");
+  const total = parseFloat(limit || "1");
+  return Math.min(100, (used / total) * 100);
+};
 
 interface CreditCard {
   id: string;
@@ -440,7 +501,7 @@ export default function CreditCardManager() {
                 <CardHeader className={`pb-2 ${card.isBlocked ? 'blur-[1px]' : ''}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span style={{ color: brandInfo.color }}>{brandInfo.icon}</span>
+                      {brandInfo.icon}
                       <CardTitle className="text-lg">{card.name}</CardTitle>
                     </div>
                     <div className="flex gap-1">

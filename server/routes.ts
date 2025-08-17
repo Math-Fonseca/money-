@@ -1106,6 +1106,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get subscriptions for credit card in specific period
+  app.get("/api/subscriptions/credit-card/:creditCardId/:startDate/:endDate", async (req, res) => {
+    try {
+      const { creditCardId } = req.params;
+      const subscriptions = await storage.getSubscriptions();
+      
+      // Filter active subscriptions for this credit card
+      const creditCardSubscriptions = subscriptions.filter(subscription => 
+        subscription.creditCardId === creditCardId && 
+        subscription.paymentMethod === 'credito' &&
+        subscription.isActive
+      );
+      
+      res.json(creditCardSubscriptions);
+    } catch (error) {
+      console.error("Error fetching credit card subscriptions:", error);
+      res.status(500).json({ message: "Failed to fetch credit card subscriptions" });
+    }
+  });
+
   app.post("/api/subscriptions", async (req, res) => {
     try {
       const subscription = insertSubscriptionSchema.parse(req.body);
