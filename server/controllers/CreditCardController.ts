@@ -245,11 +245,8 @@ export class CreditCardController extends BaseController {
       return;
     }
 
-    // Use transaction service to recalculate limit
-    const { TransactionService } = await import('../services/TransactionService');
-    const transactionService = new TransactionService(this.storage);
-    await transactionService.recalculateCreditCardLimit(id);
-
-    this.sendSuccess(res, null, 'Limite do cartão recalculado com sucesso');
+    // Calculate limit using service layer
+    const totalUsed = await this.creditCardService.recalculateLimit(id);
+    this.sendSuccess(res, { totalUsed }, 'Limite do cartão recalculado com sucesso');
   });
 }

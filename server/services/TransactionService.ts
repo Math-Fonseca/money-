@@ -85,7 +85,7 @@ export class TransactionService {
   }
 
   /**
-   * Delete a transaction
+   * Delete a transaction with proper credit limit recalculation
    */
   async deleteTransaction(id: string): Promise<boolean> {
     const existingTransaction = await this.storage.getTransactionById(id);
@@ -94,17 +94,28 @@ export class TransactionService {
     }
 
     const transaction = TransactionModel.fromData(existingTransaction);
+    let affectedCardId: string | null = null;
 
-    // Handle credit card limit adjustment
+    // Track affected credit card
     if (transaction.getCreditCardId() && transaction.getType() === 'expense') {
-      await this.updateCreditCardLimit(transaction.getCreditCardId()!, -transaction.getAmount());
+      affectedCardId = transaction.getCreditCardId()!;
     }
 
-    return await this.storage.deleteTransaction(id);
+    // Delete transaction first
+    const result = await this.storage.deleteTransaction(id);
+
+    // Recalculate limit for affected credit card to ensure accuracy
+    if (affectedCardId) {
+      const { CreditCardService } = await import('./CreditCardService');
+      const creditCardService = new CreditCardService(this.storage);
+      await creditCardService.recalculateLimit(affectedCardId);
+    }
+
+    return result;
   }
 
   /**
-   * Delete all recurring transactions
+   * Delete all recurring transactions with proper credit limit handling
    */
   async deleteRecurringTransactions(parentId: string): Promise<boolean> {
     // Get all recurring transactions
@@ -113,19 +124,33 @@ export class TransactionService {
       t.parentTransactionId === parentId || t.id === parentId
     );
 
-    // Adjust credit card limits for each transaction
+    // Track credit card impact per card
+    const creditCardImpacts = new Map<string, number>();
+
     for (const transactionData of recurringTransactions) {
       const transaction = TransactionModel.fromData(transactionData);
       if (transaction.getCreditCardId() && transaction.getType() === 'expense') {
-        await this.updateCreditCardLimit(transaction.getCreditCardId()!, -transaction.getAmount());
+        const cardId = transaction.getCreditCardId()!;
+        const currentImpact = creditCardImpacts.get(cardId) || 0;
+        creditCardImpacts.set(cardId, currentImpact + transaction.getAmount());
       }
     }
 
-    return await this.storage.deleteRecurringTransactions(parentId);
+    // Delete transactions first
+    const result = await this.storage.deleteRecurringTransactions(parentId);
+
+    // Recalculate limits for affected credit cards to ensure accuracy
+    for (const [cardId] of creditCardImpacts) {
+      const { CreditCardService } = await import('./CreditCardService');
+      const creditCardService = new CreditCardService(this.storage);
+      await creditCardService.recalculateLimit(cardId);
+    }
+
+    return result;
   }
 
   /**
-   * Delete all installment transactions
+   * Delete all installment transactions with proper credit limit recalculation
    */
   async deleteInstallmentTransactions(parentId: string): Promise<boolean> {
     // Get all installment transactions
@@ -134,24 +159,27 @@ export class TransactionService {
       t.parentTransactionId === parentId || t.id === parentId
     );
 
-    // Calculate total amount to subtract from credit card
-    let totalAmount = 0;
-    let creditCardId: string | null = null;
+    // Track affected credit cards
+    const affectedCreditCards = new Set<string>();
 
     for (const transactionData of installmentTransactions) {
       const transaction = TransactionModel.fromData(transactionData);
       if (transaction.getCreditCardId() && transaction.getType() === 'expense') {
-        totalAmount += transaction.getAmount();
-        creditCardId = transaction.getCreditCardId()!;
+        affectedCreditCards.add(transaction.getCreditCardId()!);
       }
     }
 
-    // Adjust credit card limit once for the total amount
-    if (creditCardId && totalAmount > 0) {
-      await this.updateCreditCardLimit(creditCardId, -totalAmount);
+    // Delete installment transactions first
+    const result = await this.storage.deleteInstallmentTransactions(parentId);
+
+    // Recalculate limits for affected credit cards to ensure accuracy
+    for (const cardId of affectedCreditCards) {
+      const { CreditCardService } = await import('./CreditCardService');
+      const creditCardService = new CreditCardService(this.storage);
+      await creditCardService.recalculateLimit(cardId);
     }
 
-    return await this.storage.deleteInstallmentTransactions(parentId);
+    return result;
   }
 
   /**
@@ -211,12 +239,7 @@ export class TransactionService {
     
     const createdParent = await this.storage.createTransaction(parentTransaction.toData() as any);
     
-    // Update credit card limit with first installment amount
-    if (parentTransaction.getCreditCardId()) {
-      await this.updateCreditCardLimit(parentTransaction.getCreditCardId()!, installmentAmount);
-    }
-
-    // Create subsequent installments
+    // Create subsequent installments first
     const promises: Promise<any>[] = [];
     
     for (let i = 2; i <= installments; i++) {
@@ -236,10 +259,10 @@ export class TransactionService {
     
     await Promise.all(promises);
 
-    // Update credit card limit for remaining installments
+    // Update credit card limit with total installment amount (all installments at once)
     if (parentTransaction.getCreditCardId()) {
-      const remainingAmount = installmentAmount * (installments - 1);
-      await this.updateCreditCardLimit(parentTransaction.getCreditCardId()!, remainingAmount);
+      const totalAmount = installmentAmount * installments;
+      await this.updateCreditCardLimit(parentTransaction.getCreditCardId()!, totalAmount);
     }
 
     return TransactionModel.fromData(createdParent);

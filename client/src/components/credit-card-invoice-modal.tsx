@@ -174,7 +174,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
       label = "Paga";
     } else if (isAfterClosing && totalAmount > 0) {
       finalStatus = "closed";
-      label = "Fechada";
+      label = "Fechada (auto)";
     } else if (totalAmount === 0) {
       label = "Sem movimentação";
     }

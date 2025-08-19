@@ -253,4 +253,24 @@ export class CreditCardService {
 
     return { canPurchase: true, availableLimit: creditCard.getAvailableLimit() };
   }
+
+  /**
+   * Recalculate credit card limit based on transactions
+   */
+  async recalculateLimit(creditCardId: string): Promise<number> {
+    const transactions = await this.storage.getTransactions();
+    const creditCardTransactions = transactions.filter((t: any) => 
+      t.creditCardId === creditCardId && t.type === 'expense'
+    );
+
+    const totalUsed = creditCardTransactions.reduce((sum: number, t: any) => 
+      sum + parseFloat(t.amount), 0
+    );
+
+    await this.storage.updateCreditCard(creditCardId, {
+      currentUsed: totalUsed.toString()
+    });
+
+    return totalUsed;
+  }
 }

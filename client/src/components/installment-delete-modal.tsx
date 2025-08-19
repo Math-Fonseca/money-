@@ -101,13 +101,11 @@ export default function InstallmentDeleteModal({
           <AlertDialogTitle>Excluir transação parcelada</AlertDialogTitle>
           <AlertDialogDescription>
             Esta é uma transação parcelada ({transaction.installmentNumber}/{transaction.installments}x).
-            Você deseja excluir apenas esta parcela ou todas as parcelas?
             
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-800">
-                <strong>⚠️ Atenção:</strong> Se você excluir todas as parcelas, o limite do cartão será 
-                liberado completamente para esta compra. Se excluir apenas uma parcela, apenas o valor 
-                desta parcela será liberado no limite.
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-800">
+                <strong>⚠️ Atenção:</strong> Transações parceladas devem ser excluídas como um conjunto completo.
+                Todas as {transaction.installments} parcelas serão removidas e o limite total da compra será liberado.
               </p>
             </div>
           </AlertDialogDescription>
@@ -116,14 +114,6 @@ export default function InstallmentDeleteModal({
           <AlertDialogCancel onClick={onClose}>
             Cancelar
           </AlertDialogCancel>
-          <Button
-            variant="outline"
-            onClick={handleDeleteSingle}
-            disabled={deleteSingleMutation.isPending}
-            className="border-orange-300 text-orange-700 hover:bg-orange-50"
-          >
-            {deleteSingleMutation.isPending ? "Excluindo..." : "Excluir apenas esta"}
-          </Button>
           <AlertDialogAction
             onClick={handleDeleteAllInstallments}
             disabled={deleteAllInstallmentsMutation.isPending}
