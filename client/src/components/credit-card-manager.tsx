@@ -163,7 +163,7 @@ export default function CreditCardManager() {
 
   const createCardMutation = useMutation({
     mutationFn: (data: CreditCardFormData) => {
-      return apiRequest("POST", "/api/credit-cards", {
+      return apiRequest("/api/credit-cards", "POST", {
         ...data,
         limit: parseFloat(data.limit.replace(/[^\d,.-]/g, '').replace(',', '.')).toString(),
       });
@@ -188,7 +188,7 @@ export default function CreditCardManager() {
 
   const updateCardMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: CreditCardFormData }) => {
-      return apiRequest("PUT", `/api/credit-cards/${id}`, {
+      return apiRequest(`/api/credit-cards/${id}`, "PUT", {
         ...data,
         limit: parseFloat(data.limit.replace(/[^\d,.-]/g, '').replace(',', '.')).toString(),
       });
@@ -214,7 +214,7 @@ export default function CreditCardManager() {
   });
 
   const deleteCardMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/credit-cards/${id}`),
+    mutationFn: (id: string) => apiRequest(`/api/credit-cards/${id}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       toast({

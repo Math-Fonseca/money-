@@ -10,7 +10,7 @@ export default function NavigationTabs({ activeTab, onTabChange }: NavigationTab
     { id: "expenses", label: "💸 Despesas", short: "💸" },
     { id: "credit-expenses", label: "💳 Cartão Crédito", short: "💳" },
     { id: "history", label: "📋 Histórico", short: "📋" },
-    { id: "credit-cards", label: "🏦 Cartões", short: "🏦" },
+    { id: "credit-cards", label: "💳 Cartões", short: "💳" },
     { id: "subscriptions", label: "📱 Assinaturas", short: "📱" },
     { id: "categories", label: "🏷️ Categorias", short: "🏷️" },
     { id: "settings", label: "⚙️ Configurações", short: "⚙️" },
