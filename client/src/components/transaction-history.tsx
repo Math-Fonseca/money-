@@ -283,18 +283,18 @@ export default function TransactionHistory({
                       size="sm" 
                       className="text-gray-400 hover:text-red-600"
                       onClick={() => {
-                        // Detecta parcelas: qualquer transação que tenha installments > 1 
-                        // OU qualquer transação que tenha parentTransactionId E seja do crédito
-                        // OU qualquer transação que tenha installmentNumber definido
+                        // PRIORIDADE 1: Detecta parcelas primeiro
+                        // Qualquer transação que tenha installments > 1 OU installmentNumber > 0 É PARCELA
                         const isInstallment = (transaction.installments && transaction.installments > 1) || 
-                                             (transaction.parentTransactionId && transaction.paymentMethod === 'credito') ||
                                              (transaction.installmentNumber && transaction.installmentNumber > 0);
                         
-                        // Detecta recorrentes: transações com isRecurring ou parentTransactionId mas que não são parcelas
-                        const isRecurring = transaction.isRecurring || 
-                                          (transaction.parentTransactionId && !isInstallment && transaction.paymentMethod !== 'credito');
+                        // PRIORIDADE 2: Detecta recorrentes apenas se NÃO for parcela
+                        const isRecurring = !isInstallment && (
+                          transaction.isRecurring || 
+                          (transaction.parentTransactionId && transaction.paymentMethod !== 'credito')
+                        );
                         
-                        console.log('Transaction deletion analysis:', {
+                        console.log('🔍 ANÁLISE EXCLUSÃO TRANSAÇÃO:', {
                           id: transaction.id,
                           description: transaction.description,
                           installments: transaction.installments,
@@ -302,8 +302,9 @@ export default function TransactionHistory({
                           parentTransactionId: transaction.parentTransactionId,
                           paymentMethod: transaction.paymentMethod,
                           isRecurring: transaction.isRecurring,
-                          calculatedIsInstallment: isInstallment,
-                          calculatedIsRecurring: isRecurring
+                          '✅ É PARCELA?': isInstallment,
+                          '✅ É RECORRENTE?': isRecurring,
+                          '🎯 MODAL QUE VAI ABRIR': isInstallment ? 'PARCELAS' : isRecurring ? 'RECORRENTE' : 'NORMAL'
                         });
                         
                         if (isInstallment) {
