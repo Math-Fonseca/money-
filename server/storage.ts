@@ -601,10 +601,8 @@ export class MemStorage implements IStorage {
           if (newIsActive && !oldIsActive) {
             // Activating subscription - add to limit usage
             newCurrentUsed = currentUsed + newAmount;
-          } else if (!newIsActive && oldIsActive) {
-            // Deactivating subscription - remove from limit usage
-            newCurrentUsed = Math.max(0, currentUsed - oldAmount);
           } else {
+            // ⚡️ NÃO DEDUZIR QUANDO DESATIVAR - MANTER LIMITE USADO
             newCurrentUsed = currentUsed;
           }
           
@@ -621,22 +619,7 @@ export class MemStorage implements IStorage {
   }
 
   async deleteSubscription(id: string): Promise<boolean> {
-    const subscription = this.subscriptions.get(id);
-    
-    // Se é uma assinatura ativa paga no cartão de crédito, liberar o limite
-    if (subscription && subscription.paymentMethod === 'credito' && subscription.creditCardId && subscription.isActive) {
-      const creditCard = await this.getCreditCardById(subscription.creditCardId);
-      if (creditCard) {
-        const currentUsed = parseFloat(creditCard.currentUsed || "0");
-        const subscriptionAmount = parseFloat(subscription.amount);
-        const newCurrentUsed = Math.max(0, currentUsed - subscriptionAmount);
-        
-        await this.updateCreditCard(subscription.creditCardId, {
-          currentUsed: newCurrentUsed.toFixed(2)
-        });
-      }
-    }
-    
+    // ⚡️ NÃO MEXER NO LIMITE QUANDO DELETAR ASSINATURA
     return this.subscriptions.delete(id);
   }
 

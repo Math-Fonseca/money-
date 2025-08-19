@@ -106,11 +106,8 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     new Date(t.date) <= endDate
   ) : [];
 
-  // Filter subscriptions for this credit card
-  const creditCardSubscriptions = Array.isArray(subscriptions) ? subscriptions.filter((s: any) => 
-    s.creditCardId === creditCard?.id &&
-    s.paymentMethod === 'credito'
-  ) : [];
+  // ⚡️ USAR DIRETAMENTE AS ASSINATURAS DO BACKEND - JÁ FILTRADAS
+  const creditCardSubscriptions = Array.isArray(subscriptions) ? subscriptions : [];
 
   const totalInvoiceAmount = creditCardTransactions.reduce((sum: number, t: Transaction) => 
     sum + parseFloat(t.amount), 0
