@@ -1170,41 +1170,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get subscriptions for credit card in specific period - LÓGICA CORRIGIDA
+  // Get subscriptions for credit card in specific period - LÓGICA DEFINITIVAMENTE CORRIGIDA
   app.get("/api/subscriptions/credit-card/:creditCardId/:startDate/:endDate", async (req, res) => {
     try {
       const { creditCardId, startDate, endDate } = req.params;
       const subscriptions = await storage.getSubscriptions();
       
-      // ⚡️ LÓGICA CORRETA: apenas assinaturas ativas criadas antes do final do período
+      // ⚡️ LÓGICA CORRETA: Apenas assinaturas ativas para este cartão e período
       const creditCardSubscriptions = subscriptions.filter(subscription => {
-        if (subscription.creditCardId !== creditCardId || subscription.paymentMethod !== 'credito' || !subscription.isActive) {
-          return false;
-        }
-        
-        // ⚡️ Assinatura deve ter sido criada antes do final do período para aparecer na fatura
-        const subscriptionCreated = new Date(subscription.createdAt || new Date());
-        const periodEnd = new Date(endDate);
-        
-        // ⚡️ REGRA CORRETA: só aparecer nas faturas a partir do mês de criação da assinatura
-        return subscriptionCreated <= periodEnd;
+        return subscription.creditCardId === creditCardId && 
+               subscription.paymentMethod === 'credito' && 
+               subscription.isActive;
       });
 
-      // ⚡️ TRANSFORMAR ASSINATURAS EM FORMATO DE TRANSAÇÃO PARA FATURA
+      // ⚡️ TRANSFORMAR EM FORMATO DE TRANSAÇÃO
       const subscriptionTransactions = creditCardSubscriptions.map(subscription => ({
         id: `subscription-${subscription.id}`,
         description: `${subscription.name}`,
         amount: subscription.amount,
-        date: subscription.billingDate || startDate, // ⚡️ Data de cobrança ou início do período
+        date: startDate,
         type: 'expense' as const,
         categoryId: subscription.categoryId,
         paymentMethod: 'credito',
+        creditCardId: subscription.creditCardId,
         isSubscription: true,
         subscriptionId: subscription.id,
         service: subscription.service,
         isRecurring: 'Recorrente'
       }));
-      
       res.json(subscriptionTransactions);
     } catch (error) {
       console.error("Error fetching credit card subscriptions:", error);
