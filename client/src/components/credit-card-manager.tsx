@@ -480,7 +480,7 @@ export default function CreditCardManager() {
       {creditCards.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <CreditCard className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <p className="text-gray-500 mb-4">Nenhum cartão cadastrado ainda</p>
             <p className="text-sm text-gray-400">Cadastre seus cartões para acompanhar os gastos e limites</p>
           </CardContent>

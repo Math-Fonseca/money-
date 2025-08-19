@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { CalendarIcon, CreditCardIcon, DollarSignIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from "lucide-react";
+import { CalendarIcon, CreditCard, DollarSignIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from "lucide-react";
 import { format, parseISO, addMonths, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -218,7 +218,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CreditCardIcon className="w-5 h-5" />
+            <CreditCard className="w-5 h-5" />
             Fatura - {creditCard.name}
           </DialogTitle>
         </DialogHeader>

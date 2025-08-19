@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckIcon, CreditCardIcon, TrendingUpIcon, PiggyBankIcon, BarChart3Icon, StarIcon } from "lucide-react";
+import { CheckIcon, CreditCard, TrendingUpIcon, PiggyBankIcon, BarChart3Icon, StarIcon } from "lucide-react";
 
 interface WelcomeTutorialProps {
   isOpen: boolean;
