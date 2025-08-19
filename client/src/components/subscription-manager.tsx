@@ -39,37 +39,37 @@ type SubscriptionFormData = z.infer<typeof subscriptionFormSchema>;
 
 // Função para obter informações da bandeira do cartão
 const getBrandInfo = (brand: string) => {
-  const brands: { [key: string]: { name: string; icon: JSX.Element; color: string } } = {
+  const brands: { [key: string]: { name: string; icon: string; color: string } } = {
     'mastercard': { 
       name: 'MasterCard', 
-      icon: <CreditCard size={16} className="text-red-600" />, 
+      icon: '💳', 
       color: '#EB001B' 
     },
     'visa': { 
       name: 'Visa', 
-      icon: <CreditCard size={16} className="text-blue-600" />, 
+      icon: '💳', 
       color: '#1A1F71' 
     },
     'elo': { 
       name: 'Elo', 
-      icon: <CreditCard size={16} className="text-yellow-600" />, 
+      icon: '💳', 
       color: '#FFC700' 
     },
     'american-express': { 
       name: 'American Express', 
-      icon: <CreditCard size={16} className="text-blue-700" />, 
+      icon: '💳', 
       color: '#006FCF' 
     },
     'hipercard': { 
       name: 'Hipercard', 
-      icon: <CreditCard size={16} className="text-red-700" />, 
+      icon: '💳', 
       color: '#E30613' 
     }
   };
   
   return brands[brand] || { 
     name: brand, 
-    icon: <CreditCard size={16} className="text-gray-600" />, 
+    icon: '💳', 
     color: '#6B7280' 
   };
 };
@@ -174,9 +174,9 @@ export default function SubscriptionManager() {
       };
       
       if (editingSubscription) {
-        return apiRequest("PUT", `/api/subscriptions/${editingSubscription.id}`, formattedData);
+        return apiRequest(`/api/subscriptions/${editingSubscription.id}`, "PUT", formattedData);
       } else {
-        return apiRequest("POST", "/api/subscriptions", formattedData);
+        return apiRequest("/api/subscriptions", "POST", formattedData);
       }
     },
     onSuccess: () => {
@@ -203,7 +203,7 @@ export default function SubscriptionManager() {
 
   const toggleSubscriptionMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => 
-      apiRequest("PUT", `/api/subscriptions/${id}`, { isActive }),
+      apiRequest(`/api/subscriptions/${id}`, "PUT", { isActive }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
@@ -224,7 +224,7 @@ export default function SubscriptionManager() {
   });
 
   const deleteSubscriptionMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/subscriptions/${id}`),
+    mutationFn: (id: string) => apiRequest(`/api/subscriptions/${id}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
@@ -299,7 +299,7 @@ export default function SubscriptionManager() {
     const methods: Record<string, string> = {
       dinheiro: "💵 Dinheiro",
       debito: "💳 Débito",
-      credito: "💎 Crédito",
+      credito: "💳 Crédito",
       pix: "📱 PIX",
       transferencia: "🏦 Transferência",
     };
@@ -440,7 +440,7 @@ export default function SubscriptionManager() {
                         <SelectContent>
                           <SelectItem value="dinheiro">💵 Dinheiro</SelectItem>
                           <SelectItem value="debito">💳 Débito</SelectItem>
-                          <SelectItem value="credito">🔷 Crédito</SelectItem>
+                          <SelectItem value="credito">💳 Crédito</SelectItem>
                           <SelectItem value="pix">📱 PIX</SelectItem>
                           <SelectItem value="transferencia">🏦 Transferência</SelectItem>
                         </SelectContent>
