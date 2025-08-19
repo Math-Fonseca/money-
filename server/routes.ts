@@ -246,12 +246,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const totalAmount = parseFloat(transactionData.amount);
         const installmentAmount = totalAmount / transactionData.installments;
         
-        // Create parent transaction (first installment)
+        // Create parent transaction (first installment) with CORRECT amount
         const parentTransaction = await storage.createTransaction({
           ...transactionData,
           amount: installmentAmount.toFixed(2), // ⚡️ VALOR INDIVIDUAL DA PARCELA
           installmentNumber: 1,
-          isInstallment: true, // ⚡️ MARCAR COMO PARCELA
+          isInstallment: true, // ⚡️ MARCAR COMO PARCELA  
+          installments: transactionData.installments, // ⚡️ MANTER INFO DE PARCELAS
         });
 
         // Create additional installments
@@ -268,6 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             installmentNumber: i,
             parentTransactionId: parentTransaction.id,
             isInstallment: true, // ⚡️ MARCAR COMO PARCELA
+            installments: transactionData.installments // ⚡️ MANTER INFO DE PARCELAS
           }));
         }
         
@@ -424,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all transactions that belong to this installment group
       const allTransactionsResponse = await storage.getTransactions();
-      const allTransactions = allTransactionsResponse.data || allTransactionsResponse;
+      const allTransactions = Array.isArray(allTransactionsResponse) ? allTransactionsResponse : allTransactionsResponse.data;
       const installmentTransactions = allTransactions.filter((t: Transaction) => 
         t.parentTransactionId === parentId || t.id === parentId
       );

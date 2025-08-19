@@ -331,9 +331,9 @@ function CreditCardExpenses() {
                       <div>
                         <p className="font-medium text-gray-900">
                           {transaction.description}
-                          {transaction.isInstallment && transaction.installments && transaction.installments > 1 && transaction.installmentNumber && (
+                          {transaction.installments && transaction.installments > 1 && (
                             <Badge variant="secondary" className="ml-2">
-                              Parcela {transaction.installmentNumber}/{transaction.installments}
+                              Parcela {transaction.installmentNumber || 1}/{transaction.installments}
                             </Badge>
                           )}
                         </p>

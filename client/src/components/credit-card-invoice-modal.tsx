@@ -279,7 +279,9 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Resumo da Fatura</span>
-                <Badge className={invoiceStatus.color}>
+                <Badge 
+                  className={`${invoiceStatus.color} ${invoiceStatus.status === 'FECHADA' ? 'bg-gray-100 text-gray-600 border-gray-300' : ''}`}
+                >
                   {invoiceStatus.status}
                 </Badge>
               </CardTitle>
@@ -333,9 +335,9 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                             <p className="font-medium">{transaction.description}</p>
                             <p className="text-sm text-gray-600">
                               {format(parseISO(transaction.date), "dd 'de' MMMM", { locale: ptBR })}
-                              {transaction.installments && transaction.installments > 1 && transaction.installmentNumber && (
+                              {transaction.installments && transaction.installments > 1 && (
                                 <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                  {transaction.installmentNumber}/{transaction.installments}
+                                  {transaction.installmentNumber || 1}/{transaction.installments}
                                 </span>
                               )}
                             </p>
