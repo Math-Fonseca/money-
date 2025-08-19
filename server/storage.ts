@@ -239,6 +239,7 @@ export class MemStorage implements IStorage {
       installments: transaction.installments || null,
       installmentNumber: transaction.installmentNumber || null,
       parentTransactionId: transaction.parentTransactionId || null,
+      isInstallment: transaction.isInstallment || null,
       createdAt: new Date()
     };
     this.transactions.set(id, newTransaction);
