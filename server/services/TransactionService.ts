@@ -233,11 +233,17 @@ export class TransactionService {
     const installments = parentTransaction.getInstallments()!;
     const installmentAmount = parentTransaction.getInstallmentAmount();
 
+    // ⚡️ DEFINIR isInstallment = true para parcelas de cartão de crédito
+    const parentData = parentTransaction.toData() as any;
+    if (parentTransaction.getPaymentMethod() === 'credito') {
+      parentData.isInstallment = true;
+    }
+
     // Create parent transaction (first installment)
     parentTransaction.setInstallmentNumber(1);
     parentTransaction.setAmount(installmentAmount);
     
-    const createdParent = await this.storage.createTransaction(parentTransaction.toData() as any);
+    const createdParent = await this.storage.createTransaction(parentData);
     
     // Create subsequent installments first
     const promises: Promise<any>[] = [];
@@ -252,6 +258,7 @@ export class TransactionService {
         date: installmentDate.toISOString().split('T')[0],
         installmentNumber: i,
         parentTransactionId: createdParent.id,
+        isInstallment: parentTransaction.getPaymentMethod() === 'credito', // ⚡️ DEFINIR para todas as parcelas
       });
       
       promises.push(this.storage.createTransaction(installmentTransaction.toData() as any));

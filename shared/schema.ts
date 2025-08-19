@@ -21,6 +21,7 @@ export const transactions = pgTable("transactions", {
   paymentMethod: text("payment_method"), // 'dinheiro', 'debito', 'credito', 'pix', 'transferencia'
   creditCardId: varchar("credit_card_id").references(() => creditCards.id), // for credit card expenses
   isRecurring: boolean("is_recurring").default(false),
+  isInstallment: boolean("is_installment").default(false), // ⚡️ NEW: Flag para identificar parcelas de cartão
   installments: integer("installments").default(1),
   installmentNumber: integer("installment_number").default(1),
   parentTransactionId: varchar("parent_transaction_id"), // for installments

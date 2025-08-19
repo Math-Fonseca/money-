@@ -283,16 +283,9 @@ export default function TransactionHistory({
                       size="sm" 
                       className="text-gray-400 hover:text-red-600"
                       onClick={() => {
-                        // ⚡️ FUNÇÃO PARA DETECTAR COMPRAS PARCELADAS NO CARTÃO DE CRÉDITO
-                        const isInstallment = (transaction: any): boolean => {
-                          return transaction.paymentMethod === 'credito' && (
-                            (transaction.installments && transaction.installments > 1) || 
-                            Boolean(transaction.parentTransactionId)
-                          );
-                        };
-                        
-                        // ✅ FUNÇÃO PARA DETECTAR TRANSAÇÕES RECORRENTES DE VERDADE
-                        const isRecurring = !isInstallment(transaction) && Boolean(transaction.isRecurring);
+                        // ⚡️ NOVA LÓGICA USANDO CAMPOS DO BANCO DE DADOS
+                        const isInstallment = Boolean(transaction.isInstallment);
+                        const isRecurring = Boolean(transaction.isRecurring) && !isInstallment;
                         
                         console.log('⚡️ ANÁLISE EXCLUSÃO - LÓGICA CORRIGIDA:', {
                           id: transaction.id,
