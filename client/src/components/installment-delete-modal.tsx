@@ -98,14 +98,14 @@ export default function InstallmentDeleteModal({
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Excluir transação parcelada</AlertDialogTitle>
+          <AlertDialogTitle>Excluir compra parcelada do cartão</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta é uma transação parcelada ({transaction.installmentNumber}/{transaction.installments}x).
+            Esta é uma compra parcelada no cartão de crédito ({transaction.installmentNumber || 1}/{transaction.installments || 2}x).
             
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
               <p className="text-sm text-red-800">
-                <strong>⚠️ Atenção:</strong> Transações parceladas devem ser excluídas como um conjunto completo.
-                Todas as {transaction.installments} parcelas serão removidas e o limite total da compra será liberado.
+                <strong>🚨 Regra de negócio:</strong> Compras parceladas no cartão devem ser excluídas completamente.
+                Todas as {transaction.installments || 2} parcelas serão removidas e o limite total (R$ {parseFloat(transaction.amount) * (transaction.installments || 2)}) será liberado no cartão.
               </p>
             </div>
           </AlertDialogDescription>

@@ -283,25 +283,22 @@ export default function TransactionHistory({
                       size="sm" 
                       className="text-gray-400 hover:text-red-600"
                       onClick={() => {
-                        // DETECÇÃO DE PARCELAS - REGRAS CLARAS:
-                        // 1. Se tem installments > 1 = É PARCELA (primeira ou qualquer outra)
-                        // 2. Se tem installmentNumber >= 1 = É PARCELA (primeira ou qualquer outra)
-                        // 3. Se tem parentTransactionId E paymentMethod é crédito = É PARCELA (segunda+ parcelas)
-                        const isInstallment = Boolean(
+                        // 🚨 NOVA REGRA DE NEGÓCIO PARA PARCELAS DE CARTÃO DE CRÉDITO
+                        // Se é cartão de crédito E (installments > 1 OU parentTransactionId OU installmentNumber > 0)
+                        // = É TRANSAÇÃO PARCELADA → Modal "Excluir todas as parcelas"
+                        const isCreditCardInstallment = transaction.paymentMethod === 'credito' && (
                           (transaction.installments && transaction.installments > 1) || 
-                          (transaction.installmentNumber && transaction.installmentNumber >= 1) ||
-                          (transaction.parentTransactionId && transaction.paymentMethod === 'credito')
+                          (transaction.parentTransactionId) ||
+                          (transaction.installmentNumber && transaction.installmentNumber > 0)
                         );
                         
-                        // DETECÇÃO DE RECORRENTES - APENAS se NÃO for parcela:
-                        // 1. Se isRecurring = true E não é parcela
-                        // 2. Se tem parentTransactionId E não é crédito E não é parcela
-                        const isRecurring = !isInstallment && Boolean(
+                        // Detecção de recorrentes - apenas para transações NÃO parceladas de cartão
+                        const isRecurring = !isCreditCardInstallment && (
                           transaction.isRecurring || 
                           (transaction.parentTransactionId && transaction.paymentMethod !== 'credito')
                         );
                         
-                        console.log('🔍 ANÁLISE EXCLUSÃO TRANSAÇÃO:', {
+                        console.log('🚨 ANÁLISE EXCLUSÃO TRANSAÇÃO - NOVA REGRA:', {
                           id: transaction.id,
                           description: transaction.description,
                           installments: transaction.installments,
@@ -309,12 +306,13 @@ export default function TransactionHistory({
                           parentTransactionId: transaction.parentTransactionId,
                           paymentMethod: transaction.paymentMethod,
                           isRecurring: transaction.isRecurring,
-                          '✅ É PARCELA?': isInstallment,
+                          '🔥 É PARCELA CARTÃO?': isCreditCardInstallment,
                           '✅ É RECORRENTE?': isRecurring,
-                          '🎯 MODAL QUE VAI ABRIR': isInstallment ? 'PARCELAS' : isRecurring ? 'RECORRENTE' : 'NORMAL'
+                          '🎯 MODAL QUE VAI ABRIR': isCreditCardInstallment ? 'PARCELAS CARTÃO' : isRecurring ? 'RECORRENTE' : 'NORMAL'
                         });
                         
-                        if (isInstallment) {
+                        if (isCreditCardInstallment) {
+                          // SEMPRE modal de parcelas para cartão de crédito parcelado
                           setDeletingTransaction(transaction);
                           setShowInstallmentDeleteModal(true);
                         } else if (isRecurring) {
