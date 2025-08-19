@@ -40,13 +40,13 @@ export class TransactionService {
       return await this.createInstallmentTransactions(transaction);
     }
 
-    // Create single transaction
-    const created = await this.storage.createTransaction(transaction.toData() as any);
-    
-    // Update credit card limit if applicable
+    // Update credit card limit if applicable (before creating)
     if (transaction.getCreditCardId() && transaction.getType() === 'expense') {
       await this.updateCreditCardLimit(transaction.getCreditCardId()!, transaction.getAmount());
     }
+
+    // Create single transaction
+    const created = await this.storage.createTransaction(transaction.toData() as any);
 
     return TransactionModel.fromData(created);
   }
@@ -211,6 +211,11 @@ export class TransactionService {
     
     const createdParent = await this.storage.createTransaction(parentTransaction.toData() as any);
     
+    // Update credit card limit with first installment amount
+    if (parentTransaction.getCreditCardId()) {
+      await this.updateCreditCardLimit(parentTransaction.getCreditCardId()!, installmentAmount);
+    }
+
     // Create subsequent installments
     const promises: Promise<any>[] = [];
     
@@ -231,10 +236,10 @@ export class TransactionService {
     
     await Promise.all(promises);
 
-    // Update credit card limit with total amount (not just first installment)
+    // Update credit card limit for remaining installments
     if (parentTransaction.getCreditCardId()) {
-      const totalAmount = parentTransaction.getAmount() * installments;
-      await this.updateCreditCardLimit(parentTransaction.getCreditCardId()!, totalAmount);
+      const remainingAmount = installmentAmount * (installments - 1);
+      await this.updateCreditCardLimit(parentTransaction.getCreditCardId()!, remainingAmount);
     }
 
     return TransactionModel.fromData(createdParent);
@@ -254,6 +259,22 @@ export class TransactionService {
     
     await this.storage.updateCreditCard(creditCardId, {
       currentUsed: newCurrentUsed.toString()
+    });
+  }
+
+  /**
+   * Recalculate credit card limit based on existing transactions
+   */
+  async recalculateCreditCardLimit(creditCardId: string): Promise<void> {
+    const transactions = await this.storage.getTransactions();
+    const creditCardTransactions = transactions.filter(t => 
+      t.creditCardId === creditCardId && t.type === 'expense'
+    );
+
+    const totalUsed = creditCardTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+    await this.storage.updateCreditCard(creditCardId, {
+      currentUsed: totalUsed.toString()
     });
   }
 }

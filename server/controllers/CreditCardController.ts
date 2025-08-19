@@ -230,4 +230,26 @@ export class CreditCardController extends BaseController {
 
     this.sendSuccess(res, statistics);
   });
+
+  /**
+   * Recalculate credit card limit based on transactions
+   */
+  recalculateLimit = this.asyncHandler(async (req: Request, res: Response) => {
+    this.logAction('RECALCULATE_LIMIT', req);
+    
+    const { id } = req.params;
+    const creditCard = await this.creditCardService.getCreditCardById(id);
+    
+    if (!creditCard) {
+      this.sendNotFound(res, 'Cartão de crédito');
+      return;
+    }
+
+    // Use transaction service to recalculate limit
+    const { TransactionService } = await import('../services/TransactionService');
+    const transactionService = new TransactionService(this.storage);
+    await transactionService.recalculateCreditCardLimit(id);
+
+    this.sendSuccess(res, null, 'Limite do cartão recalculado com sucesso');
+  });
 }

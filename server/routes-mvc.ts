@@ -41,6 +41,7 @@ export async function registerMVCRoutes(app: Express): Promise<Server> {
   app.patch("/api/credit-cards/:id/active", creditCardController.toggleCreditCardActive);
   app.post("/api/credit-cards/:id/payment", creditCardController.processPayment);
   app.post("/api/credit-cards/:id/validate-purchase", creditCardController.validatePurchase);
+  app.post("/api/credit-cards/:id/recalculate-limit", creditCardController.recalculateLimit);
   
   // Credit Card reporting
   app.get("/api/credit-cards/:creditCardId/invoice", creditCardController.calculateInvoice);

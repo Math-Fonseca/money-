@@ -283,13 +283,25 @@ export default function TransactionHistory({
                       size="sm" 
                       className="text-gray-400 hover:text-red-600"
                       onClick={() => {
-                        // Detecta parcelas: qualquer transação com installments > 1 OU que tenha parentTransactionId de parcela
+                        // Detecta parcelas: transação tem installments > 1 OU tem parentTransactionId E é do crédito
                         const isInstallment = (transaction.installments && transaction.installments > 1) || 
                                              (transaction.parentTransactionId && transaction.paymentMethod === 'credito');
                         
                         // Detecta recorrentes: transações com isRecurring ou parentTransactionId mas que não são parcelas
                         const isRecurring = transaction.isRecurring || 
-                                          (transaction.parentTransactionId && transaction.paymentMethod !== 'credito');
+                                          (transaction.parentTransactionId && !isInstallment);
+                        
+                        console.log('Transaction deletion analysis:', {
+                          id: transaction.id,
+                          description: transaction.description,
+                          installments: transaction.installments,
+                          installmentNumber: transaction.installmentNumber,
+                          parentTransactionId: transaction.parentTransactionId,
+                          paymentMethod: transaction.paymentMethod,
+                          isRecurring: transaction.isRecurring,
+                          calculatedIsInstallment: isInstallment,
+                          calculatedIsRecurring: isRecurring
+                        });
                         
                         if (isInstallment) {
                           setDeletingTransaction(transaction);
