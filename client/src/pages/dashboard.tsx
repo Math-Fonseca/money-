@@ -76,18 +76,23 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
     staleTime: 0,
   });
 
-  const { data: transactions = [] } = useQuery<Array<{
-    id: string;
-    description: string;
-    amount: string;
-    date: string;
-    type: 'income' | 'expense';
-    categoryId?: string;
-  }>>({
+  const { data: transactionsResponse } = useQuery<{
+    success: boolean;
+    data: Array<{
+      id: string;
+      description: string;
+      amount: string;
+      date: string;
+      type: 'income' | 'expense';
+      categoryId?: string;
+    }>;
+  }>({
     queryKey: ["/api/transactions"],
     refetchOnWindowFocus: true,
     staleTime: 0,
   });
+
+  const transactions = transactionsResponse?.data || [];
 
   const currentDate = new Date().toLocaleDateString('pt-BR', { 
     month: 'long', 
