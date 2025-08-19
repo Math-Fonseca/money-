@@ -529,29 +529,77 @@ export class MemStorage implements IStorage {
     const existing = this.subscriptions.get(id);
     if (!existing) return undefined;
     
-    // Handle credit card limit adjustments when subscription status changes
-    if (existing.paymentMethod === 'credito' && existing.creditCardId) {
-      const wasActive = existing.isActive;
-      const willBeActive = subscription.isActive !== undefined ? subscription.isActive : existing.isActive;
-      
-      if (wasActive !== willBeActive) {
-        const creditCard = await this.getCreditCardById(existing.creditCardId);
+    // Handle credit card limit adjustments when subscription status or payment method changes
+    const oldPaymentMethod = existing.paymentMethod;
+    const oldCreditCardId = existing.creditCardId;
+    const oldIsActive = existing.isActive;
+    const oldAmount = parseFloat(existing.amount);
+    
+    const newPaymentMethod = subscription.paymentMethod !== undefined ? subscription.paymentMethod : oldPaymentMethod;
+    const newCreditCardId = subscription.creditCardId !== undefined ? subscription.creditCardId : oldCreditCardId;
+    const newIsActive = subscription.isActive !== undefined ? subscription.isActive : oldIsActive;
+    const newAmount = subscription.amount !== undefined ? parseFloat(subscription.amount) : oldAmount;
+    
+    // Remove from old credit card if necessary
+    if (oldPaymentMethod === 'credito' && oldCreditCardId && oldIsActive) {
+      if (newPaymentMethod !== 'credito' || newCreditCardId !== oldCreditCardId || !newIsActive) {
+        const oldCreditCard = await this.getCreditCardById(oldCreditCardId);
+        if (oldCreditCard) {
+          const currentUsed = parseFloat(oldCreditCard.currentUsed || "0");
+          const newCurrentUsed = Math.max(0, currentUsed - oldAmount);
+          await this.updateCreditCard(oldCreditCardId, {
+            currentUsed: newCurrentUsed.toFixed(2)
+          });
+        }
+      }
+    }
+    
+    // Add to new credit card if necessary
+    if (newPaymentMethod === 'credito' && newCreditCardId && newIsActive) {
+      if (oldPaymentMethod !== 'credito' || oldCreditCardId !== newCreditCardId || !oldIsActive) {
+        const newCreditCard = await this.getCreditCardById(newCreditCardId);
+        if (newCreditCard) {
+          const currentUsed = parseFloat(newCreditCard.currentUsed || "0");
+          const newCurrentUsed = currentUsed + newAmount;
+          await this.updateCreditCard(newCreditCardId, {
+            currentUsed: newCurrentUsed.toFixed(2)
+          });
+        }
+      } else if (oldAmount !== newAmount) {
+        // Amount changed, adjust the difference
+        const creditCard = await this.getCreditCardById(newCreditCardId);
         if (creditCard) {
           const currentUsed = parseFloat(creditCard.currentUsed || "0");
-          const subscriptionAmount = parseFloat(existing.amount);
-          
+          const difference = newAmount - oldAmount;
+          const newCurrentUsed = Math.max(0, currentUsed + difference);
+          await this.updateCreditCard(newCreditCardId, {
+            currentUsed: newCurrentUsed.toFixed(2)
+          });
+        }
+      }
+    }
+    
+    // Handle within same credit card subscription status changes
+    if (oldPaymentMethod === 'credito' && newPaymentMethod === 'credito' && 
+        oldCreditCardId === newCreditCardId && oldCreditCardId) {
+      
+      if (oldIsActive !== newIsActive) {
+        const creditCard = await this.getCreditCardById(oldCreditCardId);
+        if (creditCard) {
+          const currentUsed = parseFloat(creditCard.currentUsed || "0");
           let newCurrentUsed;
-          if (willBeActive && !wasActive) {
+          
+          if (newIsActive && !oldIsActive) {
             // Activating subscription - add to limit usage
-            newCurrentUsed = currentUsed + subscriptionAmount;
-          } else if (!willBeActive && wasActive) {
+            newCurrentUsed = currentUsed + newAmount;
+          } else if (!newIsActive && oldIsActive) {
             // Deactivating subscription - remove from limit usage
-            newCurrentUsed = Math.max(0, currentUsed - subscriptionAmount);
+            newCurrentUsed = Math.max(0, currentUsed - oldAmount);
           } else {
             newCurrentUsed = currentUsed;
           }
           
-          await this.updateCreditCard(existing.creditCardId, {
+          await this.updateCreditCard(oldCreditCardId, {
             currentUsed: newCurrentUsed.toFixed(2)
           });
         }

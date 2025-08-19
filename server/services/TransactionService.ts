@@ -140,7 +140,7 @@ export class TransactionService {
     const result = await this.storage.deleteRecurringTransactions(parentId);
 
     // Recalculate limits for affected credit cards to ensure accuracy
-    for (const [cardId] of creditCardImpacts) {
+    for (const [cardId] of Array.from(creditCardImpacts.entries())) {
       const { CreditCardService } = await import('./CreditCardService');
       const creditCardService = new CreditCardService(this.storage);
       await creditCardService.recalculateLimit(cardId);
@@ -173,7 +173,7 @@ export class TransactionService {
     const result = await this.storage.deleteInstallmentTransactions(parentId);
 
     // Recalculate limits for affected credit cards to ensure accuracy
-    for (const cardId of affectedCreditCards) {
+    for (const cardId of Array.from(affectedCreditCards)) {
       const { CreditCardService } = await import('./CreditCardService');
       const creditCardService = new CreditCardService(this.storage);
       await creditCardService.recalculateLimit(cardId);
@@ -293,7 +293,7 @@ export class TransactionService {
   }
 
   /**
-   * Recalculate credit card limit based on existing transactions
+   * Recalculate credit card limit based on existing transactions AND subscriptions
    */
   async recalculateCreditCardLimit(creditCardId: string): Promise<void> {
     const transactions = await this.storage.getTransactions();
@@ -301,7 +301,15 @@ export class TransactionService {
       t.creditCardId === creditCardId && t.type === 'expense'
     );
 
-    const totalUsed = creditCardTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    // ⚡️ INCLUIR ASSINATURAS ATIVAS NO CÁLCULO
+    const subscriptions = await this.storage.getActiveSubscriptions();
+    const creditCardSubscriptions = subscriptions.filter(s => 
+      s.creditCardId === creditCardId && s.paymentMethod === 'credito' && s.isActive
+    );
+
+    const transactionTotal = creditCardTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    const subscriptionTotal = creditCardSubscriptions.reduce((sum, s) => sum + parseFloat(s.amount), 0);
+    const totalUsed = transactionTotal + subscriptionTotal;
 
     await this.storage.updateCreditCard(creditCardId, {
       currentUsed: totalUsed.toString()

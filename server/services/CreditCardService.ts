@@ -255,7 +255,7 @@ export class CreditCardService {
   }
 
   /**
-   * Recalculate credit card limit based on transactions
+   * Recalculate credit card limit based on transactions AND subscriptions
    */
   async recalculateLimit(creditCardId: string): Promise<number> {
     const transactions = await this.storage.getTransactions();
@@ -263,9 +263,21 @@ export class CreditCardService {
       t.creditCardId === creditCardId && t.type === 'expense'
     );
 
-    const totalUsed = creditCardTransactions.reduce((sum: number, t: any) => 
+    // ⚡️ INCLUIR ASSINATURAS ATIVAS NO CÁLCULO DO LIMITE
+    const subscriptions = await this.storage.getActiveSubscriptions();
+    const creditCardSubscriptions = subscriptions.filter(s => 
+      s.creditCardId === creditCardId && s.paymentMethod === 'credito' && s.isActive
+    );
+
+    const transactionTotal = creditCardTransactions.reduce((sum: number, t: any) => 
       sum + parseFloat(t.amount), 0
     );
+
+    const subscriptionTotal = creditCardSubscriptions.reduce((sum: number, s: any) => 
+      sum + parseFloat(s.amount), 0
+    );
+
+    const totalUsed = transactionTotal + subscriptionTotal;
 
     await this.storage.updateCreditCard(creditCardId, {
       currentUsed: totalUsed.toString()

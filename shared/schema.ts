@@ -177,10 +177,7 @@ export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true,
 });
 
-export const insertTransactionSchema = createInsertSchema(transactions).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+export const insertTransactionSchema = createInsertSchema(transactions).extend({
   creditCardId: z.string().optional().nullable(),
 });
 

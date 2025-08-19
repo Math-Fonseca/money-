@@ -23,6 +23,7 @@ interface Transaction {
   installmentNumber?: number;
   parentTransactionId?: string;
   isRecurring?: boolean;
+  isInstallment?: boolean;
 }
 
 interface Category {
@@ -252,7 +253,7 @@ export default function TransactionHistory({
                         {transaction.description}
                         {transaction.installments && transaction.installments > 1 && (
                           <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                            {transaction.installmentNumber}/{transaction.installments}x
+                            Parcela {transaction.installmentNumber}/{transaction.installments}
                           </span>
                         )}
                       </p>
@@ -295,9 +296,10 @@ export default function TransactionHistory({
                           parentTransactionId: transaction.parentTransactionId,
                           paymentMethod: transaction.paymentMethod,
                           isRecurringField: transaction.isRecurring,
-                          '🔥 isInstallment()': isInstallment(transaction),
+                          isInstallmentField: transaction.isInstallment,
+                          '🔥 isInstallment': isInstallment,
                           '✅ isRecurring': isRecurring,
-                          '🎯 MODAL': isInstallment(transaction) ? 'PARCELAS (SÓ EXCLUIR TODAS)' : isRecurring ? 'RECORRENTE (ESTA/TODAS)' : 'NORMAL'
+                          '🎯 MODAL': isInstallment ? 'PARCELAS (SÓ EXCLUIR TODAS)' : isRecurring ? 'RECORRENTE (ESTA/TODAS)' : 'NORMAL'
                         });
                         
                         if (isInstallment(transaction)) {

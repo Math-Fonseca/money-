@@ -1117,7 +1117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get subscriptions for credit card in specific period
   app.get("/api/subscriptions/credit-card/:creditCardId/:startDate/:endDate", async (req, res) => {
     try {
-      const { creditCardId } = req.params;
+      const { creditCardId, startDate, endDate } = req.params;
       const subscriptions = await storage.getSubscriptions();
       
       // Filter active subscriptions for this credit card
@@ -1126,8 +1126,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscription.paymentMethod === 'credito' &&
         subscription.isActive
       );
+
+      // ⚡️ TRANSFORMAR ASSINATURAS EM FORMATO DE TRANSAÇÃO PARA FATURA
+      const subscriptionTransactions = creditCardSubscriptions.map(subscription => ({
+        id: `subscription-${subscription.id}`,
+        description: `🔄 ${subscription.name} (Assinatura)`,
+        amount: subscription.amount,
+        date: startDate, // Data de início do período da fatura
+        type: 'expense' as const,
+        categoryId: subscription.categoryId,
+        paymentMethod: 'credito',
+        isSubscription: true,
+        subscriptionId: subscription.id
+      }));
       
-      res.json(creditCardSubscriptions);
+      res.json(subscriptionTransactions);
     } catch (error) {
       console.error("Error fetching credit card subscriptions:", error);
       res.status(500).json({ message: "Failed to fetch credit card subscriptions" });

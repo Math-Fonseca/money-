@@ -163,7 +163,12 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
 
   const getStatusBadge = (status: string, invoiceEndDate: Date, totalAmount: number, paidAmount: number) => {
     const today = new Date();
-    const isAfterClosing = today > invoiceEndDate;
+    // Criar data de vencimento baseada no dia de vencimento do cartão
+    const dueDate = new Date(invoiceEndDate);
+    dueDate.setDate(creditCard!.dueDay);
+    dueDate.setMonth(invoiceEndDate.getMonth() + 1); // Vencimento é no mês seguinte
+    
+    const isAfterDueDate = today > dueDate;
     
     // Determinar status baseado na lógica de negócio
     let finalStatus = status;
@@ -172,9 +177,9 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     if (paidAmount >= totalAmount && totalAmount > 0) {
       finalStatus = "paid";
       label = "Paga";
-    } else if (isAfterClosing && totalAmount > 0) {
+    } else if (isAfterDueDate && totalAmount > 0) {
       finalStatus = "closed";
-      label = "Fechada (auto)";
+      label = "Fechada";
     } else if (totalAmount === 0) {
       label = "Sem movimentação";
     }

@@ -1,0 +1,57 @@
+🔧 Correções necessárias no sistema:
+
+Ícone do Cartão de Crédito
+
+Alterar o ícone atual do cartão de crédito para um mais intuitivo (ex: credit-card do Lucide ou FontAwesome).
+
+Esse ícone deve ser aplicado em todas as telas onde o cartão de crédito é exibido: histórico, faturas, cadastro de transações e assinaturas.
+
+Status da Fatura
+
+Revisar o cálculo de status da fatura:
+
+Se a data atual for maior que a data de vencimento, a fatura deve ter status “Fechada”.
+
+Se ainda não atingiu o vencimento, status continua “Pendente”.
+
+Gráfico de Pizza
+
+Corrigir a renderização do gráfico de pizza de despesas por categoria, que não está sendo exibido.
+
+Verificar se os dados estão chegando corretamente e se o componente gráfico está sendo chamado com os valores esperados.
+
+Assinaturas com Cartão de Crédito
+
+Hoje, quando crio uma assinatura com outro método de pagamento e depois altero para cartão de crédito, ela não é contabilizada no limite do cartão e também não aparece na fatura.
+
+Corrigir para que qualquer assinatura vinculada a cartão de crédito seja:
+
+Contabilizada no limite disponível do cartão.
+
+Incluída automaticamente na fatura do mês correto.
+
+Assinaturas só aparecem no limite, não na fatura
+
+Hoje, ao criar uma assinatura direto no cartão de crédito, ela só aparece no limite do cartão, mas não entra na fatura.
+
+Corrigir para que todas as assinaturas no crédito sejam exibidas também dentro da fatura mensal.
+
+Transações Parceladas no Histórico
+
+Garantir que, ao cadastrar uma despesa parcelada com cartão de crédito, ela seja exibida no histórico da mesma forma que aparece na fatura (mostrando o indicador de “1/3”, “2/3” etc.).
+
+Importante: no momento de exclusão, despesas parceladas devem permitir apenas a opção “Excluir todas as parcelas”, nunca apenas uma.
+
+✅ Resumindo as mudanças:
+
+Alterar ícone do cartão de crédito.
+
+Corrigir status da fatura (pendente/fechada).
+
+Consertar gráfico de pizza.
+
+Garantir que assinaturas no crédito entrem no limite e na fatura.
+
+Ajustar histórico para exibir transações parceladas igual à fatura.
+
+Exclusão de despesas parceladas só pode ser feita em todas as parcelas.

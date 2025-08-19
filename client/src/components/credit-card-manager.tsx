@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, CreditCard as CreditCardIcon, Trash2, FileText, Edit } from "lucide-react";
+import { Plus, CreditCard, Trash2, FileText, Edit } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import CreditCardInvoiceModal from "./credit-card-invoice-modal";
 
@@ -37,34 +37,34 @@ const getBrandInfo = (brand: string) => {
   const brands: { [key: string]: { name: string; icon: JSX.Element; color: string } } = {
     'mastercard': { 
       name: 'MasterCard', 
-      icon: <CreditCardIcon size={20} className="text-red-600" />, 
+      icon: <CreditCard size={20} className="text-red-600" />, 
       color: '#EB001B' 
     },
     'visa': { 
       name: 'Visa', 
-      icon: <CreditCardIcon size={20} className="text-blue-600" />, 
+      icon: <CreditCard size={20} className="text-blue-600" />, 
       color: '#1A1F71' 
     },
     'elo': { 
       name: 'Elo', 
-      icon: <CreditCardIcon size={20} className="text-yellow-600" />, 
+      icon: <CreditCard size={20} className="text-yellow-600" />, 
       color: '#FFC700' 
     },
     'american-express': { 
       name: 'American Express', 
-      icon: <CreditCardIcon size={20} className="text-blue-700" />, 
+      icon: <CreditCard size={20} className="text-blue-700" />, 
       color: '#006FCF' 
     },
     'hipercard': { 
       name: 'Hipercard', 
-      icon: <CreditCardIcon size={20} className="text-red-700" />, 
+      icon: <CreditCard size={20} className="text-red-700" />, 
       color: '#E30613' 
     }
   };
   
   return brands[brand] || { 
     name: brand, 
-    icon: <CreditCardIcon size={20} className="text-gray-600" />, 
+    icon: <CreditCard size={20} className="text-gray-600" />, 
     color: '#6B7280' 
   };
 };
