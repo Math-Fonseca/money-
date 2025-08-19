@@ -145,6 +145,13 @@ export default function Charts({ summary, categories, transactions, selectedMont
       if (categoryChartRef.current) {
         // Use expensesByCategory from financial summary (includes subscriptions)
         const expensesByCategory = summary?.expensesByCategory || {};
+        
+        // Debug log to see the data structure
+        console.log('Pie chart data:', { 
+          expensesByCategory, 
+          categoriesCount: categories.length,
+          summaryKeys: Object.keys(summary || {})
+        });
 
         const categoryData = Object.entries(expensesByCategory)
           .map(([categoryId, amount]) => {
@@ -152,12 +159,14 @@ export default function Charts({ summary, categories, transactions, selectedMont
             return {
               categoryId,
               name: category?.name || 'Desconhecido',
-              amount,
+              amount: typeof amount === 'string' ? parseFloat(amount) : amount,
               color: category?.color || '#6B7280',
             };
           })
           .filter(item => item.amount > 0)
           .sort((a, b) => b.amount - a.amount);
+          
+        console.log('Category data for pie chart:', categoryData);
 
         if (categoryData.length > 0) {
           new Chart.Chart(categoryChartRef.current, {
