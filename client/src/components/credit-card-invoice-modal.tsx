@@ -80,21 +80,21 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
 
   const { startDate, endDate } = creditCard ? getInvoicePeriod(currentDate) : { startDate: new Date(), endDate: new Date() };
 
-  // Fetch transactions for current invoice period
+  // Fetch transactions for current invoice period - CORRIGIDO URL
   const { data: transactions = [] } = useQuery({
-    queryKey: ["/api/transactions", "credit-card", creditCard?.id, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
+    queryKey: [`/api/transactions/credit-card/${creditCard?.id}/${format(startDate, 'yyyy-MM-dd')}/${format(endDate, 'yyyy-MM-dd')}`],
     enabled: !!creditCard && isOpen,
   });
 
-  // Fetch subscriptions for current invoice period
+  // Fetch subscriptions for current invoice period - CORRIGIDO URL
   const { data: subscriptions = [] } = useQuery({
-    queryKey: ["/api/subscriptions/credit-card", creditCard?.id, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
+    queryKey: [`/api/subscriptions/credit-card/${creditCard?.id}/${format(startDate, 'yyyy-MM-dd')}/${format(endDate, 'yyyy-MM-dd')}`],
     enabled: !!creditCard && isOpen,
   });
 
-  // Fetch invoice data
+  // Fetch invoice data - CORRIGIDO URL
   const { data: invoice = null } = useQuery<CreditCardInvoice | null>({
-    queryKey: ["/api/credit-card-invoices", creditCard?.id, format(endDate, 'yyyy-MM-dd')],
+    queryKey: [`/api/credit-card-invoices/${creditCard?.id}/${format(endDate, 'yyyy-MM-dd')}`],
     enabled: !!creditCard && isOpen,
   });
 
@@ -145,7 +145,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
   // Payment mutation
   const payInvoiceMutation = useMutation({
     mutationFn: async (data: { invoiceId: string; amount: string }) => {
-      return await apiRequest("PUT", `/api/credit-card-invoices/${data.invoiceId}/pay`, { amount: data.amount });
+      return await apiRequest(`/api/credit-card-invoices/${data.invoiceId}/pay`, "PUT", { amount: data.amount });
     },
     onSuccess: () => {
       toast({

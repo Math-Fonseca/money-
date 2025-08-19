@@ -240,19 +240,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Handle installments for credit card purchases
+      // Handle installments for credit card purchases - CORRIGIDO DEFINITIVAMENTE
       if (transactionData.installments && transactionData.installments > 1) {
-        // ⚡️ CÁLCULO CORRETO DAS PARCELAS
         const totalAmount = parseFloat(transactionData.amount);
         const installmentAmount = totalAmount / transactionData.installments;
         
-        // Create parent transaction (first installment) with CORRECT amount
+        // Create parent transaction (first installment) with CORRECT installment amount
         const parentTransaction = await storage.createTransaction({
           ...transactionData,
-          amount: installmentAmount.toFixed(2), // ⚡️ VALOR INDIVIDUAL DA PARCELA (ex: 10.00 para 30/3)
+          amount: installmentAmount.toFixed(2), // ⚡️ VALOR DA PARCELA, NÃO DO TOTAL
           installmentNumber: 1,
-          isInstallment: true, // ⚡️ MARCAR COMO PARCELA  
-          installments: transactionData.installments, // ⚡️ MANTER INFO DE PARCELAS
+          isInstallment: true,
+          installments: transactionData.installments,
         });
 
         // Create additional installments
@@ -275,20 +274,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         await Promise.all(promises);
 
-        // ⚡️ ATUALIZAR LIMITE DO CARTÃO COM VALOR TOTAL (não individual)
+        // ⚡️ ATUALIZAR LIMITE DO CARTÃO COM VALOR TOTAL - DEFINITIVO
         if (transactionData.creditCardId && transactionData.type === 'expense') {
           const creditCard = await storage.getCreditCardById(transactionData.creditCardId);
           if (creditCard) {
             const currentUsed = parseFloat(creditCard.currentUsed || "0");
-            const newCurrentUsed = currentUsed + totalAmount; // ⚡️ VALOR TOTAL DA COMPRA
+            const newCurrentUsed = currentUsed + totalAmount;
             
             await storage.updateCreditCard(transactionData.creditCardId, {
               currentUsed: newCurrentUsed.toFixed(2)
             });
           }
         }
-        
-        // ⚡️ PARENT TRANSACTION JÁ FOI CRIADA COM VALOR CORRETO
         
         res.status(201).json(parentTransaction);
       } else {
@@ -474,51 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete all installment transactions by parent ID
-  app.delete("/api/transactions/installments/:parentId", async (req, res) => {
-    try {
-      const { parentId } = req.params;
-      
-      // Get all installment transactions first to calculate credit card adjustment
-      const installmentTransactions = await storage.getInstallmentTransactions(parentId);
-      
-      if (!installmentTransactions || installmentTransactions.length === 0) {
-        res.status(404).json({ message: "Installment transactions not found" });
-        return;
-      }
-
-      // Calculate total amount to remove from credit card limit
-      const parentTransaction = installmentTransactions.find((t: Transaction) => t.id === parentId);
-      if (parentTransaction && parentTransaction.creditCardId && parentTransaction.type === 'expense') {
-        const totalAmount = parseFloat(parentTransaction.amount) * installmentTransactions.length;
-        
-        const creditCard = await storage.getCreditCardById(parentTransaction.creditCardId);
-        if (creditCard) {
-          const currentUsed = parseFloat(creditCard.currentUsed || "0");
-          const newCurrentUsed = Math.max(0, currentUsed - totalAmount);
-          
-          await storage.updateCreditCard(parentTransaction.creditCardId, {
-            currentUsed: newCurrentUsed.toFixed(2)
-          });
-        }
-      }
-
-      // Delete all installment transactions
-      const deleted = await storage.deleteInstallmentTransactions(parentId);
-      
-      if (!deleted) {
-        res.status(404).json({ message: "Installment transactions not found" });
-        return;
-      }
-      
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting installment transactions:", error);
-      res.status(500).json({ message: "Failed to delete installment transactions" });
-    }
-  });
-
-  // Delete all installment transactions by parent ID (including parent)
+  // Delete all installment transactions by parent ID (including parent) - CORRIGIDO
   app.delete("/api/transactions/installments/:parentId", async (req, res) => {
     try {
       const { parentId } = req.params;
@@ -801,74 +754,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate expenses by category (incluindo assinaturas) - aplicando a mesma lógica de ciclo de faturamento
       const expensesByCategory: Record<string, number> = {};
       
-      // Adicionar transações que NÃO são de cartão de crédito
-      nonCreditTransactions.forEach(t => {
+      // Adicionar TODAS as transações de despesa do mês atual (independente do método de pagamento)
+      const currentMonthTransactions = transactions.filter(t => {
+        if (t.type !== 'expense') return false;
+        const transactionDate = new Date(t.date);
+        return transactionDate.getMonth() + 1 === targetMonth && 
+               transactionDate.getFullYear() === targetYear;
+      });
+      
+      currentMonthTransactions.forEach(t => {
         if (t.categoryId) {
           expensesByCategory[t.categoryId] = (expensesByCategory[t.categoryId] || 0) + parseFloat(t.amount);
         }
       });
       
-      // Adicionar transações de cartão de crédito que devem aparecer neste mês
-      for (const card of creditCards) {
-        const cardTransactions = await storage.getTransactions();
-        
-        const relevantCardTransactions = cardTransactions.filter(t => {
-          if (t.type !== 'expense' || t.creditCardId !== card.id) return false;
-          
-          const transactionDate = new Date(t.date);
-          const closingDay = card.closingDay || 1;
-          
-          let invoiceMonth = transactionDate.getMonth() + 1;
-          let invoiceYear = transactionDate.getFullYear();
-          
-          if (transactionDate.getDate() > closingDay) {
-            invoiceMonth += 1;
-          }
-          
-          if (invoiceMonth > 12) {
-            invoiceMonth = 1;
-            invoiceYear += 1;
-          }
-          
-          return invoiceMonth === targetMonth && invoiceYear === targetYear;
-        });
-        
-        // Adicionar transações de cartão por categoria
-        relevantCardTransactions.forEach(t => {
-          if (t.categoryId) {
-            expensesByCategory[t.categoryId] = (expensesByCategory[t.categoryId] || 0) + parseFloat(t.amount);
-          }
-        });
-      }
+      // As transações de cartão já foram incluídas acima junto com todas as outras
       
-      // Adicionar assinaturas por categoria
-      for (const sub of subscriptions) {
+      // Adicionar assinaturas ativas por categoria
+      subscriptions.forEach(sub => {
         if (sub.categoryId) {
-          // Aplicar mesma lógica de ciclo de faturamento para assinaturas
-          if (sub.paymentMethod === 'credito' && sub.creditCardId) {
-            const card = creditCards.find(c => c.id === sub.creditCardId);
-            if (card) {
-              const closingDay = card.closingDay || 1;
-              const billingDate = sub.billingDate || 1;
-              
-              let invoiceMonth = targetMonth;
-              let invoiceYear = targetYear;
-              
-              if (billingDate > closingDay) {
-                invoiceMonth -= 1;
-                if (invoiceMonth < 1) {
-                  invoiceMonth = 12;
-                  invoiceYear -= 1;
-                }
-              }
-              
-              expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
-            }
-          } else {
-            expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
-          }
+          expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
         }
-      }
+      });
       
       res.json({
         totalIncome,

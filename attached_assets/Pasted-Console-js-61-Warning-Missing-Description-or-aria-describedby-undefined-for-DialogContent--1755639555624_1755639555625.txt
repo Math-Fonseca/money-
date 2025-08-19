@@ -1,0 +1,58 @@
+Console.js:61 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+Mt.forEach.n.<computed> @ Console.js:61Understand this warning
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/transactionscredit-card362527ef-00a2-4898-847f-d1a019ad3f492025-07-042025-08-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/subscriptions/credit-card362527ef-00a2-4898-847f-d1a019ad3f492025-07-042025-08-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/credit-card-invoices362527ef-00a2-4898-847f-d1a019ad3f492025-08-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/transactionscredit-card362527ef-00a2-4898-847f-d1a019ad3f492025-08-042025-09-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/credit-card-invoices362527ef-00a2-4898-847f-d1a019ad3f492025-09-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/subscriptions/credit-card362527ef-00a2-4898-847f-d1a019ad3f492025-08-042025-09-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/subscriptions/credit-card362527ef-00a2-4898-847f-d1a019ad3f492025-09-042025-10-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/transactionscredit-card362527ef-00a2-4898-847f-d1a019ad3f492025-09-042025-10-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/credit-card-invoices362527ef-00a2-4898-847f-d1a019ad3f492025-10-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/credit-card-invoices362527ef-00a2-4898-847f-d1a019ad3f492025-11-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/subscriptions/credit-card362527ef-00a2-4898-847f-d1a019ad3f492025-10-042025-11-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/transactionscredit-card362527ef-00a2-4898-847f-d1a019ad3f492025-10-042025-11-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/credit-card-invoices362527ef-00a2-4898-847f-d1a019ad3f492025-12-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/subscriptions/credit-card362527ef-00a2-4898-847f-d1a019ad3f492025-11-042025-12-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/transactionscredit-card362527ef-00a2-4898-847f-d1a019ad3f492025-11-042025-12-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/transactionscredit-card362527ef-00a2-4898-847f-d1a019ad3f492025-12-042026-01-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/credit-card-invoices362527ef-00a2-4898-847f-d1a019ad3f492026-01-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/subscriptions/credit-card362527ef-00a2-4898-847f-d1a019ad3f492025-12-042026-01-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+Console.js:61 Warning: validateDOMNesting(...): <div> cannot appear as a descendant of <p>.
+    at div
+    at Badge (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/src/components/ui/badge.tsx:35:18)
+    at p
+    at div
+    at div
+    at div
+    at div
+    at div
+    at _c9 (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at CreditCardExpenses (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/src/components/credit-card-expenses.tsx:49:23)
+    at div
+    at div
+    at Dashboard (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/src/pages/dashboard.tsx:36:37)
+    at component
+    at Route (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=5f540209:323:16)
+    at Switch (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=5f540209:379:17)
+    at Router (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/src/App.tsx?v=9tF7sN01TjPYWDeSj2mgY:27:3)
+    at Provider (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=5f540209:38:15)
+    at TooltipProvider (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=5f540209:62:5)
+    at QueryClientProvider (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=5f540209:2805:3)
+    at App (https://b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/src/App.tsx?v=9tF7sN01TjPYWDeSj2mgY:62:35)
+Mt.forEach.n.<computed> @ Console.js:61Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/subscriptions/credit-card362527ef-00a2-4898-847f-d1a019ad3f492025-07-042025-08-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/credit-card-invoices362527ef-00a2-4898-847f-d1a019ad3f492025-08-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/transactionscredit-card362527ef-00a2-4898-847f-d1a019ad3f492025-07-042025-08-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/credit-card-invoices362527ef-00a2-4898-847f-d1a019ad3f492025-09-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/subscriptions/credit-card362527ef-00a2-4898-847f-d1a019ad3f492025-08-042025-09-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/transactionscredit-card362527ef-00a2-4898-847f-d1a019ad3f492025-08-042025-09-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/transactionscredit-card362527ef-00a2-4898-847f-d1a019ad3f492025-09-042025-10-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/credit-card-invoices362527ef-00a2-4898-847f-d1a019ad3f492025-10-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/subscriptions/credit-card362527ef-00a2-4898-847f-d1a019ad3f492025-09-042025-10-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/credit-card-invoices362527ef-00a2-4898-847f-d1a019ad3f492025-11-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/transactionscredit-card362527ef-00a2-4898-847f-d1a019ad3f492025-10-042025-11-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)Understand this error
+b8c53c1a-daaf-4bdf-b18b-76a660127b69-00-2h6asxucm1zs9.kirk.replit.dev/api/subscriptions/credit-card362527ef-00a2-4898-847f-d1a019ad3f492025-10-042025-11-03:1  Failed to load resource: the server responded with a status of 404 (Not Found)
