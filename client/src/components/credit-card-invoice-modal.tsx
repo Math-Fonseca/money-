@@ -109,10 +109,9 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
   // ⚡️ USAR DIRETAMENTE AS ASSINATURAS DO BACKEND - JÁ FILTRADAS
   const creditCardSubscriptions = Array.isArray(subscriptions) ? subscriptions : [];
 
+  // ⚡️ TOTAL APENAS DAS TRANSAÇÕES - ASSINATURAS JÁ VÊM INCLUÍDAS
   const totalInvoiceAmount = creditCardTransactions.reduce((sum: number, t: Transaction) => 
     sum + parseFloat(t.amount), 0
-  ) + creditCardSubscriptions.reduce((sum: number, s: any) => 
-    sum + parseFloat(s.amount), 0
   );
 
   // Calculate invoice status based on dates and payments
@@ -322,7 +321,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                   <CardTitle>Transações da Fatura</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {creditCardTransactions.length === 0 && creditCardSubscriptions.length === 0 ? (
+                  {creditCardTransactions.length === 0 ? (
                     <p className="text-center text-gray-500 py-8">
                       Nenhuma transação encontrada para este período.
                     </p>
@@ -348,23 +347,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                         </div>
                       ))}
                       
-                      {/* Assinaturas do cartão */}
-                      {creditCardSubscriptions.map((subscription: any) => (
-                        <div key={subscription.id} className="flex items-center justify-between p-3 border rounded-lg bg-purple-50">
-                          <div>
-                            <p className="font-medium">{subscription.name}</p>
-                            <p className="text-sm text-gray-600">
-                              Assinatura mensal
-                              <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
-                                Recorrente
-                              </span>
-                            </p>
-                          </div>
-                          <p className="font-bold text-red-600">
-                            R$ {parseFloat(subscription.amount).toFixed(2)}
-                          </p>
-                        </div>
-                      ))}
+                      {/* ⚡️ ASSINATURAS JÁ VÊM COMO TRANSAÇÕES DO BACKEND - NÃO DUPLICAR */}
                     </div>
                   )}
                 </CardContent>

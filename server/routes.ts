@@ -1176,11 +1176,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { creditCardId, startDate, endDate } = req.params;
       const subscriptions = await storage.getSubscriptions();
       
-      // ⚡️ LÓGICA CORRETA: Apenas assinaturas ativas para este cartão e período
+      // ⚡️ LÓGICA CORRETA: Apenas assinaturas ativas criadas ANTES do fim do período
       const creditCardSubscriptions = subscriptions.filter(subscription => {
-        return subscription.creditCardId === creditCardId && 
-               subscription.paymentMethod === 'credito' && 
-               subscription.isActive;
+        if (subscription.creditCardId !== creditCardId || 
+            subscription.paymentMethod !== 'credito' || 
+            !subscription.isActive) {
+          return false;
+        }
+        
+        // ⚡️ CRUCIAL: Assinatura só aparece nas faturas A PARTIR do mês de criação
+        const subscriptionCreated = new Date(subscription.createdAt || new Date());
+        const periodStart = new Date(startDate);
+        
+        // Se a assinatura foi criada DEPOIS do início deste período, não incluir
+        return subscriptionCreated.getTime() <= periodStart.getTime();
       });
 
       // ⚡️ TRANSFORMAR EM FORMATO DE TRANSAÇÃO
