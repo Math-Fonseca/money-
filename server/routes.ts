@@ -425,8 +425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get all transactions that belong to this installment group
-      const allTransactionsResponse = await storage.getTransactions();
-      const allTransactions = Array.isArray(allTransactionsResponse) ? allTransactionsResponse : allTransactionsResponse.data;
+      const allTransactions = await storage.getTransactions();
       const installmentTransactions = allTransactions.filter((t: Transaction) => 
         t.parentTransactionId === parentId || t.id === parentId
       );
@@ -939,14 +938,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/settings", async (req, res) => {
     try {
       const { key, value } = req.body;
+      console.log('Settings received:', { key, value, body: req.body });
+      
       if (!key || value === undefined) {
+        console.log('Missing key or value');
         res.status(400).json({ message: "Key and value are required" });
         return;
       }
       
       const setting = await storage.createOrUpdateSetting({ key, value });
+      console.log('Setting saved:', setting);
       res.json(setting);
     } catch (error) {
+      console.error('Error saving setting:', error);
       res.status(500).json({ message: "Failed to save setting" });
     }
   });

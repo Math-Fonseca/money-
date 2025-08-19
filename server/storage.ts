@@ -270,6 +270,7 @@ export class MemStorage implements IStorage {
         date: nextDate.toISOString().split('T')[0],
         parentTransactionId: baseTransaction.id,
         installmentNumber: baseTransaction.installmentNumber || 1,
+        isInstallment: baseTransaction.isInstallment || null,
         createdAt: new Date()
       };
       
