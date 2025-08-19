@@ -440,7 +440,7 @@ export default function SubscriptionManager() {
                         <SelectContent>
                           <SelectItem value="dinheiro">💵 Dinheiro</SelectItem>
                           <SelectItem value="debito">💳 Débito</SelectItem>
-                          <SelectItem value="credito">💎 Crédito</SelectItem>
+                          <SelectItem value="credito">🔷 Crédito</SelectItem>
                           <SelectItem value="pix">📱 PIX</SelectItem>
                           <SelectItem value="transferencia">🏦 Transferência</SelectItem>
                         </SelectContent>

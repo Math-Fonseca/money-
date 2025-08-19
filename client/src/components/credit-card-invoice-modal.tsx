@@ -163,14 +163,18 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
 
   const getStatusBadge = (status: string, invoiceEndDate: Date, totalAmount: number, paidAmount: number) => {
     const today = new Date();
-    // Criar data de vencimento baseada no dia de vencimento do cartão
-    const dueDate = new Date(invoiceEndDate);
-    dueDate.setDate(creditCard!.dueDay);
-    dueDate.setMonth(invoiceEndDate.getMonth() + 1); // Vencimento é no mês seguinte
+    // Criar data de fechamento baseada no dia de fechamento do cartão
+    const closingDate = new Date(invoiceEndDate);
     
+    // Criar data de vencimento (dia do vencimento no mês seguinte ao fechamento)
+    const dueDate = new Date(invoiceEndDate);
+    dueDate.setMonth(invoiceEndDate.getMonth() + 1);
+    dueDate.setDate(creditCard!.dueDay);
+    
+    const isAfterClosingDate = today > closingDate;
     const isAfterDueDate = today > dueDate;
     
-    // Determinar status baseado na lógica de negócio
+    // Determinar status baseado na lógica de negócio CORRIGIDA
     let finalStatus = status;
     let label = "Pendente";
     
@@ -178,9 +182,13 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
       finalStatus = "paid";
       label = "Paga";
     } else if (isAfterDueDate && totalAmount > 0) {
+      finalStatus = "overdue";
+      label = "Vencida";
+    } else if (isAfterClosingDate && totalAmount > 0) {
       finalStatus = "closed";
       label = "Fechada";
     } else if (totalAmount === 0) {
+      finalStatus = "closed";
       label = "Sem movimentação";
     }
     
@@ -299,7 +307,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                             <p className="font-medium">{transaction.description}</p>
                             <p className="text-sm text-gray-600">
                               {format(parseISO(transaction.date), "dd 'de' MMMM", { locale: ptBR })}
-                              {transaction.installments && transaction.installments > 1 && (
+                              {transaction.installments && transaction.installments > 1 && transaction.installmentNumber && (
                                 <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                                   {transaction.installmentNumber}/{transaction.installments}
                                 </span>

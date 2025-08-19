@@ -103,7 +103,7 @@ export default function TransactionHistory({
     const methods: Record<string, string> = {
       dinheiro: "💵 Dinheiro",
       debito: "💳 Débito",
-      credito: "💎 Crédito",
+      credito: "🔷 Crédito",
       pix: "📱 PIX",
       transferencia: "🏦 Transferência",
     };
@@ -251,7 +251,7 @@ export default function TransactionHistory({
                     <div>
                       <p className="font-medium text-gray-900">
                         {transaction.description}
-                        {transaction.installments && transaction.installments > 1 && (
+                        {transaction.isInstallment && transaction.installments && transaction.installments > 1 && transaction.installmentNumber && (
                           <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                             Parcela {transaction.installmentNumber}/{transaction.installments}
                           </span>
@@ -302,7 +302,7 @@ export default function TransactionHistory({
                           '🎯 MODAL': isInstallment ? 'PARCELAS (SÓ EXCLUIR TODAS)' : isRecurring ? 'RECORRENTE (ESTA/TODAS)' : 'NORMAL'
                         });
                         
-                        if (isInstallment(transaction)) {
+                        if (isInstallment) {
                           // Compra parcelada no cartão → APENAS "Excluir todas as parcelas"
                           setDeletingTransaction(transaction);
                           setShowInstallmentDeleteModal(true);

@@ -63,6 +63,13 @@ export interface IStorage {
   createSubscription(subscription: InsertSubscription): Promise<Subscription>;
   updateSubscription(id: string, subscription: Partial<InsertSubscription>): Promise<Subscription | undefined>;
   deleteSubscription(id: string): Promise<boolean>;
+
+  // Credit Card Invoices
+  getCreditCardInvoices(): Promise<CreditCardInvoice[]>;
+  getCreditCardInvoiceById(id: string): Promise<CreditCardInvoice | undefined>;
+  createCreditCardInvoice(invoice: InsertCreditCardInvoice): Promise<CreditCardInvoice>;
+  updateCreditCardInvoice(id: string, invoice: Partial<InsertCreditCardInvoice>): Promise<CreditCardInvoice | undefined>;
+  deleteCreditCardInvoice(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {

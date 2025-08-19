@@ -164,7 +164,7 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
   const paymentMethods = [
     { value: "dinheiro", label: "💵 Dinheiro" },
     { value: "debito", label: "💳 Cartão de Débito" },
-    { value: "credito", label: "💎 Cartão de Crédito" },
+    { value: "credito", label: "🔷 Cartão de Crédito" },
     { value: "pix", label: "📱 PIX" },
     { value: "transferencia", label: "🏦 Transferência" },
   ];

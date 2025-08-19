@@ -894,9 +894,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ⚡️ MIDDLEWARE PARA FECHAMENTO AUTOMÁTICO DE FATURAS
+  const autoCloseInvoices = async () => {
+    try {
+      const creditCards = await storage.getCreditCards();
+      const today = new Date();
+      
+      for (const card of creditCards) {
+        // Verificar faturas dos últimos 3 meses para fechar automaticamente
+        for (let monthsAgo = 0; monthsAgo <= 3; monthsAgo++) {
+          const checkDate = new Date(today);
+          checkDate.setMonth(checkDate.getMonth() - monthsAgo);
+          
+          const year = checkDate.getFullYear();
+          const month = checkDate.getMonth();
+          const closingDay = card.closingDay;
+          
+          // Data de fechamento da fatura
+          const closingDate = new Date(year, month, closingDay);
+          
+          // Se a data de fechamento já passou, fechar a fatura
+          if (today > closingDate) {
+            const endDateStr = closingDate.toISOString().split('T')[0];
+            
+            try {
+              // Buscar faturas existentes para este cartão e período
+              const allInvoices = await storage.getCreditCardInvoices();
+              // Como não temos campo endDate no schema, vamos usar dueDate para verificar
+              const dueDate = new Date(year, month + 1, card.dueDay).toISOString().split('T')[0];
+              const existingInvoice = allInvoices.find(inv => 
+                inv.creditCardId === card.id && inv.dueDate === dueDate
+              );
+              
+              // Se não existe fatura ou está pendente, criar/atualizar para fechada
+              if (!existingInvoice) {
+                // Buscar transações para calcular valor da fatura
+                const startDate = new Date(year, month - 1, closingDay + 1);
+                const endDate = closingDate;
+                
+                const transactions = await storage.getTransactionsByDateRange(
+                  startDate.toISOString().split('T')[0],
+                  endDate.toISOString().split('T')[0]
+                );
+                
+                const cardTransactions = transactions.filter(t => 
+                  t.creditCardId === card.id && t.type === 'expense'
+                );
+                
+                const subscriptions = await storage.getActiveSubscriptions();
+                const cardSubscriptions = subscriptions.filter(s => 
+                  s.creditCardId === card.id && s.paymentMethod === 'credito'
+                );
+                
+                const totalAmount = cardTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0) +
+                                 cardSubscriptions.reduce((sum, s) => sum + parseFloat(s.amount), 0);
+                
+                // Criar fatura fechada automaticamente
+                if (totalAmount > 0) {
+                  await storage.createCreditCardInvoice({
+                    creditCardId: card.id,
+                    dueDate: new Date(year, month + 1, card.dueDay).toISOString().split('T')[0],
+                    totalAmount: totalAmount.toString(),
+                    paidAmount: "0",
+                    status: "closed", // ⚡️ STATUS FECHADO AUTOMATICAMENTE
+                  });
+                }
+              } else if (existingInvoice.status === 'pending') {
+                // Atualizar fatura pendente para fechada
+                await storage.updateCreditCardInvoice(existingInvoice.id, {
+                  status: "closed"
+                });
+              }
+            } catch (invoiceError) {
+              console.log(`Erro ao processar fatura do cartão ${card.name}:`, invoiceError);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Erro no fechamento automático de faturas:', error);
+    }
+  };
+
   // Credit Cards
   app.get("/api/credit-cards", async (req, res) => {
     try {
+      // ⚡️ EXECUTAR FECHAMENTO AUTOMÁTICO ANTES DE RETORNAR CARTÕES
+      await autoCloseInvoices();
+      
       const creditCards = await storage.getCreditCards();
       res.json(creditCards);
     } catch (error) {
