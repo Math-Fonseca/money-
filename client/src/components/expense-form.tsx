@@ -8,6 +8,44 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CreditCard } from "lucide-react";
+
+// Função para obter informações da bandeira do cartão
+const getBrandInfo = (brand: string) => {
+  const brands: { [key: string]: { name: string; icon: JSX.Element; color: string } } = {
+    'mastercard': { 
+      name: 'MasterCard', 
+      icon: <CreditCard size={16} className="text-red-600" />, 
+      color: '#EB001B' 
+    },
+    'visa': { 
+      name: 'Visa', 
+      icon: <CreditCard size={16} className="text-blue-600" />, 
+      color: '#1A1F71' 
+    },
+    'elo': { 
+      name: 'Elo', 
+      icon: <CreditCard size={16} className="text-yellow-600" />, 
+      color: '#FFC700' 
+    },
+    'american-express': { 
+      name: 'American Express', 
+      icon: <CreditCard size={16} className="text-blue-700" />, 
+      color: '#006FCF' 
+    },
+    'hipercard': { 
+      name: 'Hipercard', 
+      icon: <CreditCard size={16} className="text-red-700" />, 
+      color: '#E30613' 
+    }
+  };
+  
+  return brands[brand] || { 
+    name: brand, 
+    icon: <CreditCard size={16} className="text-gray-600" />, 
+    color: '#6B7280' 
+  };
+};
 
 const expenseSchema = z.object({
   description: z.string().min(1, "Descrição é obrigatória"),
@@ -249,11 +287,17 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
                   </SelectTrigger>
                   <SelectContent>
                     {creditCards.length > 0 ? (
-                      creditCards.map((card: any) => (
-                        <SelectItem key={card.id} value={card.id}>
-                          💳 {card.name} ({card.brand.toUpperCase()})
-                        </SelectItem>
-                      ))
+                      creditCards.map((card: any) => {
+                        const brandInfo = getBrandInfo(card.brand);
+                        return (
+                          <SelectItem key={card.id} value={card.id}>
+                            <div className="flex items-center gap-2">
+                              {brandInfo.icon}
+                              {card.name} ({brandInfo.name})
+                            </div>
+                          </SelectItem>
+                        );
+                      })
                     ) : (
                       <SelectItem value="none" disabled>
                         Nenhum cartão cadastrado

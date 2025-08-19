@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Smartphone, Trash2, Calendar, Pencil } from "lucide-react";
+import { Plus, Smartphone, Trash2, Calendar, Pencil, CreditCard } from "lucide-react";
 
 // Form schema para assinaturas
 const subscriptionFormSchema = z.object({
@@ -36,6 +36,43 @@ const subscriptionFormSchema = z.object({
 });
 
 type SubscriptionFormData = z.infer<typeof subscriptionFormSchema>;
+
+// Função para obter informações da bandeira do cartão
+const getBrandInfo = (brand: string) => {
+  const brands: { [key: string]: { name: string; icon: JSX.Element; color: string } } = {
+    'mastercard': { 
+      name: 'MasterCard', 
+      icon: <CreditCard size={16} className="text-red-600" />, 
+      color: '#EB001B' 
+    },
+    'visa': { 
+      name: 'Visa', 
+      icon: <CreditCard size={16} className="text-blue-600" />, 
+      color: '#1A1F71' 
+    },
+    'elo': { 
+      name: 'Elo', 
+      icon: <CreditCard size={16} className="text-yellow-600" />, 
+      color: '#FFC700' 
+    },
+    'american-express': { 
+      name: 'American Express', 
+      icon: <CreditCard size={16} className="text-blue-700" />, 
+      color: '#006FCF' 
+    },
+    'hipercard': { 
+      name: 'Hipercard', 
+      icon: <CreditCard size={16} className="text-red-700" />, 
+      color: '#E30613' 
+    }
+  };
+  
+  return brands[brand] || { 
+    name: brand, 
+    icon: <CreditCard size={16} className="text-gray-600" />, 
+    color: '#6B7280' 
+  };
+};
 
 // Serviços de assinatura disponíveis
 const subscriptionServices = [
@@ -427,14 +464,17 @@ export default function SubscriptionManager() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {creditCards.map((card) => (
-                              <SelectItem key={card.id} value={card.id}>
-                                <div className="flex items-center gap-2">
-                                  <span>💳</span>
-                                  {card.name}
-                                </div>
-                              </SelectItem>
-                            ))}
+                            {creditCards.map((card) => {
+                              const brandInfo = getBrandInfo(card.brand);
+                              return (
+                                <SelectItem key={card.id} value={card.id}>
+                                  <div className="flex items-center gap-2">
+                                    {brandInfo.icon}
+                                    {card.name} ({brandInfo.name})
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         <FormMessage />
