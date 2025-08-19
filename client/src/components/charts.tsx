@@ -143,18 +143,8 @@ export default function Charts({ summary, categories, transactions, selectedMont
 
       // Category Breakdown Chart
       if (categoryChartRef.current) {
-        // Calculate expenses by category from transactions data
-        const expensesByCategory: { [key: string]: number } = {};
-        
-        if (transactions && Array.isArray(transactions)) {
-          transactions
-            .filter(t => t.type === 'expense' && t.categoryId)
-            .forEach(t => {
-              const categoryId = t.categoryId!;
-              const amount = parseFloat(t.amount) || 0;
-              expensesByCategory[categoryId] = (expensesByCategory[categoryId] || 0) + amount;
-            });
-        }
+        // Use expensesByCategory from financial summary (includes subscriptions)
+        const expensesByCategory = summary?.expensesByCategory || {};
 
         const categoryData = Object.entries(expensesByCategory)
           .map(([categoryId, amount]) => {

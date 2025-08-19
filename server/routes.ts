@@ -1160,6 +1160,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { invoiceId } = req.params;
       const { amount } = req.body;
       
+      console.log('Pagamento recebido:', { invoiceId, amount, body: req.body });
+      
       const invoice = await storage.getCreditCardInvoiceById(invoiceId);
       if (!invoice) {
         return res.status(404).json({ error: "Fatura não encontrada" });

@@ -145,7 +145,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
   // Payment mutation
   const payInvoiceMutation = useMutation({
     mutationFn: async (data: { invoiceId: string; amount: string }) => {
-      return await apiRequest("PUT", `/api/credit-card-invoices/${data.invoiceId}/pay`, data);
+      return await apiRequest("PUT", `/api/credit-card-invoices/${data.invoiceId}/pay`, { amount: data.amount });
     },
     onSuccess: () => {
       toast({
@@ -280,7 +280,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
               <CardTitle className="flex items-center justify-between">
                 <span>Resumo da Fatura</span>
                 <Badge 
-                  className={`${invoiceStatus.color} ${invoiceStatus.status === 'FECHADA' ? 'bg-gray-100 text-gray-600 border-gray-300' : invoiceStatus.status === 'ABERTA' ? 'bg-green-100 text-white border-green-300' : ''}`}
+                  className={`${invoiceStatus.status === 'VENCIDA' ? 'bg-red-500 text-white border-red-600' : invoiceStatus.status === 'FECHADA' ? 'bg-gray-100 text-gray-600 border-gray-300' : invoiceStatus.status === 'ABERTA' ? 'bg-green-500 text-white border-green-600' : invoiceStatus.color}`}
                 >
                   {invoiceStatus.status}
                 </Badge>
