@@ -60,13 +60,20 @@ export class ErrorHandlingMiddleware {
   }
 
   /**
-   * 404 handler for unknown routes
+   * 404 handler for unknown API routes only
+   * Non-API routes should be handled by the frontend
    */
-  static notFound(req: Request, res: Response) {
-    res.status(404).json({
-      success: false,
-      message: `Rota ${req.method} ${req.path} não encontrada`
-    });
+  static notFound(req: Request, res: Response, next: NextFunction) {
+    // Only handle API routes with JSON 404 response
+    if (req.path.startsWith('/api')) {
+      res.status(404).json({
+        success: false,
+        message: `Rota ${req.method} ${req.path} não encontrada`
+      });
+    } else {
+      // Let other routes (frontend routes) continue to be handled by Vite
+      next();
+    }
   }
 
   /**
