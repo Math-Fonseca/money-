@@ -55,7 +55,7 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       installments: 1,
-      creditCardId: "",
+      creditCardId: undefined,
       isRecurring: false,
     }
   });

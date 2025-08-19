@@ -13,7 +13,16 @@ export class TransactionService {
    * Create a new transaction with business logic validation
    */
   async createTransaction(transactionData: any): Promise<TransactionModel> {
-    const transaction = new TransactionModel(transactionData);
+    // Pre-process the data to handle null values
+    const processedData = {
+      ...transactionData,
+      creditCardId: transactionData.creditCardId === null ? undefined : transactionData.creditCardId,
+      installments: transactionData.installments === null ? undefined : transactionData.installments,
+      installmentNumber: transactionData.installmentNumber === null ? undefined : transactionData.installmentNumber,
+      parentTransactionId: transactionData.parentTransactionId === null ? undefined : transactionData.parentTransactionId
+    };
+    
+    const transaction = new TransactionModel(processedData);
     
     // Validate transaction
     const validation = transaction.validate();

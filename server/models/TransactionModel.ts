@@ -26,10 +26,10 @@ export class TransactionModel extends BaseModel {
     type: z.enum(['income', 'expense'], { errorMap: () => ({ message: 'Tipo deve ser receita ou despesa' }) }),
     categoryId: z.string().min(1, 'Categoria é obrigatória'),
     paymentMethod: z.string().min(1, 'Método de pagamento é obrigatório'),
-    creditCardId: z.string().optional(),
-    installments: z.number().positive().optional(),
-    installmentNumber: z.number().positive().optional(),
-    parentTransactionId: z.string().optional(),
+    creditCardId: z.string().nullable().optional(),
+    installments: z.number().positive().nullable().optional(),
+    installmentNumber: z.number().positive().nullable().optional(),
+    parentTransactionId: z.string().nullable().optional(),
     isRecurring: z.boolean().optional()
   });
 
