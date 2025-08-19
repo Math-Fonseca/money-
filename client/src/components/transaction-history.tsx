@@ -283,42 +283,40 @@ export default function TransactionHistory({
                       size="sm" 
                       className="text-gray-400 hover:text-red-600"
                       onClick={() => {
-                        // 🚨 NOVA REGRA DE NEGÓCIO PARA PARCELAS DE CARTÃO DE CRÉDITO
-                        // Se é cartão de crédito E (installments > 1 OU parentTransactionId OU installmentNumber > 0)
-                        // = É TRANSAÇÃO PARCELADA → Modal "Excluir todas as parcelas"
-                        const isCreditCardInstallment = transaction.paymentMethod === 'credito' && (
-                          (transaction.installments && transaction.installments > 1) || 
-                          (transaction.parentTransactionId) ||
-                          (transaction.installmentNumber && transaction.installmentNumber > 0)
-                        );
+                        // ⚡️ FUNÇÃO PARA DETECTAR COMPRAS PARCELADAS NO CARTÃO DE CRÉDITO
+                        const isInstallment = (transaction: any): boolean => {
+                          return transaction.paymentMethod === 'credito' && (
+                            (transaction.installments && transaction.installments > 1) || 
+                            Boolean(transaction.parentTransactionId)
+                          );
+                        };
                         
-                        // Detecção de recorrentes - apenas para transações NÃO parceladas de cartão
-                        const isRecurring = !isCreditCardInstallment && (
-                          transaction.isRecurring || 
-                          (transaction.parentTransactionId && transaction.paymentMethod !== 'credito')
-                        );
+                        // ✅ FUNÇÃO PARA DETECTAR TRANSAÇÕES RECORRENTES DE VERDADE
+                        const isRecurring = !isInstallment(transaction) && Boolean(transaction.isRecurring);
                         
-                        console.log('🚨 ANÁLISE EXCLUSÃO TRANSAÇÃO - NOVA REGRA:', {
+                        console.log('⚡️ ANÁLISE EXCLUSÃO - LÓGICA CORRIGIDA:', {
                           id: transaction.id,
                           description: transaction.description,
                           installments: transaction.installments,
                           installmentNumber: transaction.installmentNumber,
                           parentTransactionId: transaction.parentTransactionId,
                           paymentMethod: transaction.paymentMethod,
-                          isRecurring: transaction.isRecurring,
-                          '🔥 É PARCELA CARTÃO?': isCreditCardInstallment,
-                          '✅ É RECORRENTE?': isRecurring,
-                          '🎯 MODAL QUE VAI ABRIR': isCreditCardInstallment ? 'PARCELAS CARTÃO' : isRecurring ? 'RECORRENTE' : 'NORMAL'
+                          isRecurringField: transaction.isRecurring,
+                          '🔥 isInstallment()': isInstallment(transaction),
+                          '✅ isRecurring': isRecurring,
+                          '🎯 MODAL': isInstallment(transaction) ? 'PARCELAS (SÓ EXCLUIR TODAS)' : isRecurring ? 'RECORRENTE (ESTA/TODAS)' : 'NORMAL'
                         });
                         
-                        if (isCreditCardInstallment) {
-                          // SEMPRE modal de parcelas para cartão de crédito parcelado
+                        if (isInstallment(transaction)) {
+                          // Compra parcelada no cartão → APENAS "Excluir todas as parcelas"
                           setDeletingTransaction(transaction);
                           setShowInstallmentDeleteModal(true);
                         } else if (isRecurring) {
+                          // Transação recorrente → "Apenas esta" ou "Todas as recorrentes"
                           setDeletingTransaction(transaction);
                           setShowRecurringDeleteModal(true);
                         } else {
+                          // Transação única → Modal padrão simples
                           setDeletingTransaction(transaction);
                         }
                       }}
