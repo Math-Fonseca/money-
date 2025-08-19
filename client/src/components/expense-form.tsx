@@ -18,6 +18,15 @@ const expenseSchema = z.object({
   creditCardId: z.string().optional(),
   installments: z.number().min(1).default(1),
   isRecurring: z.boolean().default(false),
+}).refine((data) => {
+  // Se for cartão de crédito, creditCardId é obrigatório
+  if (data.paymentMethod === "credito") {
+    return data.creditCardId && data.creditCardId.length > 0;
+  }
+  return true;
+}, {
+  message: "Cartão de crédito é obrigatório para pagamento no crédito",
+  path: ["creditCardId"]
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -34,16 +43,12 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
     queryKey: ["/api/financial-summary"],
   });
 
-  const { data: creditCards = [] } = useQuery<Array<{
-    id: string;
-    name: string;
-    brand: string;
-    bank: string;
-    limit: string;
-    currentUsed: string;
-  }>>({
+  const { data: creditCardsResponse } = useQuery({
     queryKey: ["/api/credit-cards"],
   });
+
+  // Handle MVC response format for credit cards
+  const creditCards = (creditCardsResponse as any)?.success ? (creditCardsResponse as any).data : (Array.isArray(creditCardsResponse) ? creditCardsResponse : []);
 
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
@@ -97,7 +102,7 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
   const onSubmit = (data: ExpenseFormData) => {
     // Verificar limite do cartão de crédito antes de enviar
     if (data.paymentMethod === "credito" && data.creditCardId) {
-      const selectedCard = creditCards.find(card => card.id === data.creditCardId);
+      const selectedCard = creditCards.find((card: any) => card.id === data.creditCardId);
       if (selectedCard) {
         const currentUsed = parseFloat(selectedCard.currentUsed || "0");
         const cardLimit = parseFloat(selectedCard.limit);
@@ -244,7 +249,7 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
                   </SelectTrigger>
                   <SelectContent>
                     {creditCards.length > 0 ? (
-                      creditCards.map((card) => (
+                      creditCards.map((card: any) => (
                         <SelectItem key={card.id} value={card.id}>
                           💳 {card.name} ({card.brand.toUpperCase()})
                         </SelectItem>

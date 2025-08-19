@@ -146,6 +146,7 @@ export default function SubscriptionManager() {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
       setIsDialogOpen(false);
       setEditingSubscription(null);
       form.reset();
@@ -170,6 +171,7 @@ export default function SubscriptionManager() {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
       toast({
         title: "Assinatura atualizada",
         description: "Status da assinatura foi alterado.",
@@ -190,6 +192,7 @@ export default function SubscriptionManager() {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
       toast({
         title: "Assinatura removida",
         description: "Assinatura removida com sucesso.",
