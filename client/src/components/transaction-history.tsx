@@ -283,13 +283,20 @@ export default function TransactionHistory({
                       size="sm" 
                       className="text-gray-400 hover:text-red-600"
                       onClick={() => {
-                        // PRIORIDADE 1: Detecta parcelas primeiro
-                        // Qualquer transação que tenha installments > 1 OU installmentNumber > 0 É PARCELA
-                        const isInstallment = (transaction.installments && transaction.installments > 1) || 
-                                             (transaction.installmentNumber && transaction.installmentNumber > 0);
+                        // DETECÇÃO DE PARCELAS - REGRAS CLARAS:
+                        // 1. Se tem installments > 1 = É PARCELA (primeira ou qualquer outra)
+                        // 2. Se tem installmentNumber >= 1 = É PARCELA (primeira ou qualquer outra)
+                        // 3. Se tem parentTransactionId E paymentMethod é crédito = É PARCELA (segunda+ parcelas)
+                        const isInstallment = Boolean(
+                          (transaction.installments && transaction.installments > 1) || 
+                          (transaction.installmentNumber && transaction.installmentNumber >= 1) ||
+                          (transaction.parentTransactionId && transaction.paymentMethod === 'credito')
+                        );
                         
-                        // PRIORIDADE 2: Detecta recorrentes apenas se NÃO for parcela
-                        const isRecurring = !isInstallment && (
+                        // DETECÇÃO DE RECORRENTES - APENAS se NÃO for parcela:
+                        // 1. Se isRecurring = true E não é parcela
+                        // 2. Se tem parentTransactionId E não é crédito E não é parcela
+                        const isRecurring = !isInstallment && Boolean(
                           transaction.isRecurring || 
                           (transaction.parentTransactionId && transaction.paymentMethod !== 'credito')
                         );
