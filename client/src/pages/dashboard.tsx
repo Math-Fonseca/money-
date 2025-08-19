@@ -9,6 +9,7 @@ import Charts from "@/components/charts";
 import MonthSelector from "@/components/month-selector";
 import SettingsManager from "@/components/settings-manager";
 import CreditCardManager from "@/components/credit-card-manager";
+import CreditCardExpenses from "@/components/credit-card-expenses";
 import SubscriptionManager from "@/components/subscription-manager";
 import { CategoryManager } from "@/components/category-manager";
 import UserProfile from "@/components/user-profile";
@@ -178,6 +179,10 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
             transactions={transactions} 
             categories={categories}
           />
+        )}
+
+        {activeTab === "credit-expenses" && (
+          <CreditCardExpenses />
         )}
 
         {activeTab === "credit-cards" && (

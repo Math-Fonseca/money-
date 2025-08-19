@@ -242,13 +242,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Handle installments for credit card purchases
       if (transactionData.installments && transactionData.installments > 1) {
+        // ⚡️ CÁLCULO CORRETO DAS PARCELAS
+        const totalAmount = parseFloat(transactionData.amount);
+        const installmentAmount = totalAmount / transactionData.installments;
+        
+        // Create parent transaction (first installment)
         const parentTransaction = await storage.createTransaction({
           ...transactionData,
+          amount: installmentAmount.toFixed(2), // ⚡️ VALOR INDIVIDUAL DA PARCELA
           installmentNumber: 1,
+          isInstallment: true, // ⚡️ MARCAR COMO PARCELA
         });
 
         // Create additional installments
-        const installmentAmount = parseFloat(transactionData.amount) / transactionData.installments;
         const promises = [];
         
         for (let i = 2; i <= transactionData.installments; i++) {
@@ -257,34 +263,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           promises.push(storage.createTransaction({
             ...transactionData,
-            amount: installmentAmount.toFixed(2),
+            amount: installmentAmount.toFixed(2), // ⚡️ VALOR INDIVIDUAL DA PARCELA
             date: installmentDate.toISOString().split('T')[0],
             installmentNumber: i,
             parentTransactionId: parentTransaction.id,
+            isInstallment: true, // ⚡️ MARCAR COMO PARCELA
           }));
         }
         
-        // Para parcelamentos, atualizar o limite usado com o valor total da compra (não apenas a primeira parcela)
-        // O cartão de crédito reserva o limite total, mesmo que seja parcelado
-        if (parentTransaction.creditCardId && parentTransaction.type === 'expense') {
-          const creditCard = await storage.getCreditCardById(parentTransaction.creditCardId);
+        await Promise.all(promises);
+
+        // ⚡️ ATUALIZAR LIMITE DO CARTÃO COM VALOR TOTAL (não individual)
+        if (transactionData.creditCardId && transactionData.type === 'expense') {
+          const creditCard = await storage.getCreditCardById(transactionData.creditCardId);
           if (creditCard) {
             const currentUsed = parseFloat(creditCard.currentUsed || "0");
-            const totalAmount = parseFloat(transactionData.amount); // Valor total da transação
-            const newCurrentUsed = currentUsed + totalAmount;
+            const newCurrentUsed = currentUsed + totalAmount; // ⚡️ VALOR TOTAL DA COMPRA
             
-            await storage.updateCreditCard(parentTransaction.creditCardId, {
+            await storage.updateCreditCard(transactionData.creditCardId, {
               currentUsed: newCurrentUsed.toFixed(2)
             });
           }
         }
         
-        await Promise.all(promises);
-        
-        // Update parent transaction amount to be the installment amount
-        await storage.updateTransaction(parentTransaction.id, {
-          amount: installmentAmount.toFixed(2),
-        });
+        // ⚡️ PARENT TRANSACTION JÁ FOI CRIADA COM VALOR CORRETO
         
         res.status(201).json(parentTransaction);
       } else {
