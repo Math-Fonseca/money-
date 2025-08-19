@@ -3,6 +3,83 @@ import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
 
+// National and SP holidays (fixed and calculated dates)
+function getBrazilianHolidays(year: number): Date[] {
+  const holidays: Date[] = [];
+  
+  // Fixed national holidays
+  holidays.push(new Date(year, 0, 1));   // New Year
+  holidays.push(new Date(year, 3, 21));  // Tiradentes
+  holidays.push(new Date(year, 4, 1));   // Labor Day
+  holidays.push(new Date(year, 8, 7));   // Independence Day
+  holidays.push(new Date(year, 9, 12));  // Our Lady of Aparecida
+  holidays.push(new Date(year, 10, 2));  // All Souls' Day
+  holidays.push(new Date(year, 10, 15)); // Proclamation of the Republic
+  holidays.push(new Date(year, 11, 25)); // Christmas
+  
+  // SP state holidays
+  holidays.push(new Date(year, 6, 9));   // Constitutionalist Revolution (SP)
+  
+  // São Paulo city holidays
+  holidays.push(new Date(year, 0, 25));  // São Paulo Anniversary
+  holidays.push(new Date(year, 10, 20)); // Black Awareness Day (SP city)
+  
+  // Easter-based holidays (simplified calculation)
+  const easter = getEasterDate(year);
+  holidays.push(new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000)); // Good Friday
+  holidays.push(new Date(easter.getTime() + 60 * 24 * 60 * 60 * 1000)); // Corpus Christi
+  
+  return holidays;
+}
+
+// Simplified Easter calculation (Western)
+function getEasterDate(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+// Calculate working days (Monday to Friday) excluding holidays
+function calculateWorkingDays(year: number, month: number): number {
+  const date = new Date(year, month - 1, 1); // month is 1-based
+  const lastDay = new Date(year, month, 0).getDate();
+  const holidays = getBrazilianHolidays(year);
+  let workingDays = 0;
+
+  for (let day = 1; day <= lastDay; day++) {
+    date.setDate(day);
+    const dayOfWeek = date.getDay();
+    
+    // Check if it's a weekday (Monday to Friday)
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      // Check if it's not a holiday
+      const isHoliday = holidays.some(holiday => 
+        holiday.getDate() === day && 
+        holiday.getMonth() === month - 1 && 
+        holiday.getFullYear() === year
+      );
+      
+      if (!isHoliday) {
+        workingDays++;
+      }
+    }
+  }
+
+  return workingDays;
+}
+
 /**
  * Legacy routes - keeping existing functionality while MVC is being implemented
  * This file maintains backwards compatibility for categories, subscriptions, budgets, etc.
@@ -74,7 +151,7 @@ export async function registerLegacyRoutes(app: Express): Promise<Server> {
       // Calculate working days for the specific month
       const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
       const targetYear = year ? parseInt(year) : new Date().getFullYear();
-      const workingDaysInMonth = 22; // Simplified for now
+      const workingDaysInMonth = calculateWorkingDays(targetYear, targetMonth);
       const monthlyVT = dailyVT * workingDaysInMonth;
       const monthlyVR = dailyVR * workingDaysInMonth;
 
