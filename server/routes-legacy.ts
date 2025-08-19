@@ -41,7 +41,7 @@ export async function registerLegacyRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Financial summary route (legacy)
+  // Financial summary route with VT/VR/salary support
   app.get("/api/financial-summary", async (req, res) => {
     try {
       const month = req.query.month as string;
@@ -61,10 +61,30 @@ export async function registerLegacyRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Get all settings for salary, VT, VR
+      const settings = await storage.getSettings();
+      const salarySetting = settings.find(s => s.key === 'salary');
+      const vtSetting = settings.find(s => s.key === 'dailyVT');
+      const vrSetting = settings.find(s => s.key === 'dailyVR');
+      
+      const monthlySalary = salarySetting ? parseFloat(salarySetting.value) : 0;
+      const dailyVT = vtSetting ? parseFloat(vtSetting.value) : 0;
+      const dailyVR = vrSetting ? parseFloat(vrSetting.value) : 0;
+      
+      // Calculate working days for the specific month
+      const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
+      const targetYear = year ? parseInt(year) : new Date().getFullYear();
+      const workingDaysInMonth = 22; // Simplified for now
+      const monthlyVT = dailyVT * workingDaysInMonth;
+      const monthlyVR = dailyVR * workingDaysInMonth;
+
       // Calculate income and expenses
-      const totalIncome = filteredTransactions
+      const transactionIncome = filteredTransactions
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      
+      // Include salary, VT and VR in total income
+      const totalIncome = transactionIncome + monthlySalary + monthlyVT + monthlyVR;
         
       const totalExpenses = filteredTransactions
         .filter(t => t.type === 'expense')
@@ -95,11 +115,88 @@ export async function registerLegacyRoutes(app: Express): Promise<Server> {
         budgetUsed,
         budgetRemaining: Math.max(0, totalBudget - budgetUsed),
         activeSubscriptions: activeSubscriptions.length,
-        totalSubscriptionAmount: subscriptionExpenses
+        totalSubscriptionAmount: subscriptionExpenses,
+        monthlySalary,
+        monthlyVT,
+        monthlyVR,
+        transactionIncome
       });
     } catch (error) {
       console.error("Error calculating financial summary:", error);
       res.status(500).json({ message: "Failed to calculate financial summary" });
+    }
+  });
+
+  // Credit card transaction route
+  app.get("/api/transactions/credit-card/:cardId/:startDate/:endDate", async (req, res) => {
+    try {
+      const { cardId, startDate, endDate } = req.params;
+      
+      // Buscar transações do cartão no período específico
+      const transactions = await storage.getTransactions();
+      const cardTransactions = transactions.filter(t => 
+        t.creditCardId === cardId && 
+        t.date >= startDate && 
+        t.date <= endDate
+      );
+      
+      // Buscar apenas assinaturas ATIVAS do cartão
+      const subscriptions = await storage.getActiveSubscriptions();
+      const cardSubscriptions = subscriptions.filter(s => 
+        s.paymentMethod === 'credito' && s.creditCardId === cardId && s.isActive
+      );
+      
+      // Converter assinaturas em transações virtuais para a fatura
+      const subscriptionTransactions = cardSubscriptions.map(sub => {
+        // Calcular a data da próxima cobrança baseada no período da fatura
+        const startDateObj = new Date(startDate);
+        const billingDate = Math.min(sub.billingDate, new Date(startDateObj.getFullYear(), startDateObj.getMonth() + 1, 0).getDate());
+        const transactionDate = new Date(startDateObj.getFullYear(), startDateObj.getMonth(), billingDate);
+        
+        return {
+          id: `subscription-${sub.id}`,
+          description: `${sub.name} (Assinatura)`,
+          amount: sub.amount,
+          date: transactionDate.toISOString().split('T')[0],
+          type: 'expense' as const,
+          categoryId: sub.categoryId,
+          creditCardId: cardId,
+          isSubscription: true,
+          subscriptionId: sub.id,
+          createdAt: sub.createdAt
+        };
+      });
+      
+      // Combinar transações normais com assinaturas
+      const allTransactions = [...cardTransactions, ...subscriptionTransactions]
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      res.json(allTransactions);
+    } catch (error) {
+      console.error("Erro ao buscar transações do cartão:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
+  // Credit card invoice route
+  app.get("/api/credit-card-invoices/:cardId/:dueDate", async (req, res) => {
+    try {
+      const { cardId, dueDate } = req.params;
+      
+      // Create a default invoice structure for now
+      const invoice = {
+        id: `invoice-${cardId}-${dueDate}`,
+        creditCardId: cardId,
+        dueDate: dueDate,
+        totalAmount: "0",
+        paidAmount: "0",
+        status: "pending"
+      };
+      
+      res.json(invoice);
+    } catch (error) {
+      console.error("Erro ao buscar fatura do cartão:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
 

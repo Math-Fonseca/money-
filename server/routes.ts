@@ -649,6 +649,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Include salary, VT and VR in total income
       const totalIncome = transactionIncome + monthlySalary + monthlyVT + monthlyVR;
       
+      console.log('Financial summary calculated:', {
+        monthlySalary,
+        monthlyVT,
+        monthlyVR,
+        transactionIncome,
+        totalIncome
+      });
+      
       // Calcular despesas das transações - IMPORTANTE: Cartões de crédito devem ser contabilizados no mês de vencimento da fatura
       let transactionExpenses = 0;
       
