@@ -249,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create parent transaction (first installment) with CORRECT amount
         const parentTransaction = await storage.createTransaction({
           ...transactionData,
-          amount: installmentAmount.toFixed(2), // ⚡️ VALOR INDIVIDUAL DA PARCELA
+          amount: installmentAmount.toFixed(2), // ⚡️ VALOR INDIVIDUAL DA PARCELA (ex: 10.00 para 30/3)
           installmentNumber: 1,
           isInstallment: true, // ⚡️ MARCAR COMO PARCELA  
           installments: transactionData.installments, // ⚡️ MANTER INFO DE PARCELAS

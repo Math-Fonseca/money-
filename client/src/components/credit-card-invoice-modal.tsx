@@ -280,7 +280,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
               <CardTitle className="flex items-center justify-between">
                 <span>Resumo da Fatura</span>
                 <Badge 
-                  className={`${invoiceStatus.color} ${invoiceStatus.status === 'FECHADA' ? 'bg-gray-100 text-gray-600 border-gray-300' : ''}`}
+                  className={`${invoiceStatus.color} ${invoiceStatus.status === 'FECHADA' ? 'bg-gray-100 text-gray-600 border-gray-300' : invoiceStatus.status === 'ABERTA' ? 'bg-green-100 text-white border-green-300' : ''}`}
                 >
                   {invoiceStatus.status}
                 </Badge>

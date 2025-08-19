@@ -109,6 +109,11 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
     return transactions.filter(transaction => {
       const transactionDate = new Date(transaction.date);
       
+      // ⚡️ EXCLUIR DESPESAS DE CARTÃO DE CRÉDITO DO HISTÓRICO GERAL
+      if (transaction.creditCardId && transaction.type === 'expense') {
+        return false;
+      }
+      
       // Period filter - fix date ranges to be year-aware
       if (filters.period !== "all") {
         let startDate: Date;
