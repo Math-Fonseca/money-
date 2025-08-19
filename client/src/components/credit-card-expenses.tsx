@@ -48,11 +48,11 @@ function CreditCardExpenses() {
     queryKey: ["/api/categories"],
   });
 
-  const { data: creditCardsResponse } = useQuery({
+  const { data: creditCardsResponse } = useQuery<{ success: boolean; data: CreditCard[] }>({
     queryKey: ["/api/credit-cards"],
   });
 
-  const { data: transactionsResponse } = useQuery({
+  const { data: transactionsResponse } = useQuery<{ success: boolean; data: Transaction[] }>({
     queryKey: ["/api/transactions"],
   });
 
@@ -99,8 +99,11 @@ function CreditCardExpenses() {
   });
 
   const deleteTransactionMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest(`/api/transactions/${id}`, "DELETE");
+    mutationFn: async (data: { id: string; deleteAll?: boolean }) => {
+      if (data.deleteAll) {
+        return apiRequest(`/api/transactions/installments/${data.id}`, "DELETE");
+      }
+      return apiRequest(`/api/transactions/${data.id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
@@ -152,15 +155,14 @@ function CreditCardExpenses() {
   };
 
   const handleDelete = (transaction: Transaction) => {
-    if (transaction.isInstallment) {
+    if (transaction.isInstallment || (transaction.installments && transaction.installments > 1)) {
       // Para parcelas, sempre excluir todas
-      toast({
-        title: "Confirmação",
-        description: "Esta é uma compra parcelada. Todas as parcelas serão excluídas.",
+      deleteTransactionMutation.mutate({ 
+        id: transaction.parentTransactionId || transaction.id, 
+        deleteAll: true 
       });
-      deleteTransactionMutation.mutate(transaction.parentTransactionId || transaction.id);
     } else {
-      deleteTransactionMutation.mutate(transaction.id);
+      deleteTransactionMutation.mutate({ id: transaction.id });
     }
   };
 
@@ -285,7 +287,7 @@ function CreditCardExpenses() {
                   <SelectContent>
                     {Array.from({ length: 24 }, (_, i) => i + 1).map((num) => (
                       <SelectItem key={num} value={num.toString()}>
-                        {num}x {num > 1 && `(${formatCurrency((parseFloat(form.watch("amount") || "0") / num).toString())} cada)`}
+                        {num === 1 ? "À Vista" : `${num}x${num > 1 ? ` (${formatCurrency((parseFloat(form.watch("amount") || "0") / num).toString())} cada)` : ""}`}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -403,6 +403,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete all installments of a transaction
+  app.delete("/api/transactions/installments/:parentId", async (req, res) => {
+    try {
+      const { parentId } = req.params;
+      console.log(`[${new Date().toISOString()}] DELETE_ALL_INSTALLMENTS`, {
+        method: req.method,
+        path: req.path,
+        params: req.params,
+        query: req.query,
+        data: req.body
+      });
+      
+      // Get the parent transaction to find all related installments
+      const parentTransaction = await storage.getTransactionById(parentId);
+      if (!parentTransaction) {
+        res.status(404).json({ message: "Parent transaction not found" });
+        return;
+      }
+      
+      // Get all transactions that belong to this installment group
+      const allTransactionsResponse = await storage.getTransactions();
+      const allTransactions = allTransactionsResponse.data || allTransactionsResponse;
+      const installmentTransactions = allTransactions.filter((t: Transaction) => 
+        t.parentTransactionId === parentId || t.id === parentId
+      );
+      
+      // Delete all installment transactions and update credit card limits
+      for (const transaction of installmentTransactions) {
+        // Update credit card limit before deleting
+        if (transaction.creditCardId && transaction.type === 'expense') {
+          const creditCard = await storage.getCreditCardById(transaction.creditCardId);
+          if (creditCard) {
+            const currentUsed = parseFloat(creditCard.currentUsed || "0");
+            const transactionAmount = parseFloat(transaction.amount);
+            const newCurrentUsed = Math.max(0, currentUsed - transactionAmount);
+            
+            await storage.updateCreditCard(transaction.creditCardId, {
+              currentUsed: newCurrentUsed.toFixed(2)
+            });
+          }
+        }
+        
+        await storage.deleteTransaction(transaction.id);
+      }
+      
+      console.log(`Deleted ${installmentTransactions.length} installment transactions`);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting installments:", error);
+      res.status(500).json({ message: "Failed to delete installments" });
+    }
+  });
+
   // Delete all recurring transactions by parent ID
   app.delete("/api/transactions/recurring/:parentId", async (req, res) => {
     try {

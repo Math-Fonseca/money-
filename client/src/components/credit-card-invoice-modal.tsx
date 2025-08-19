@@ -118,6 +118,30 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     sum + parseFloat(s.amount), 0
   );
 
+  // Calculate invoice status based on dates and payments
+  const getInvoiceStatus = () => {
+    const today = new Date();
+    const closingDate = new Date(endDate);
+    const dueDate = new Date(closingDate);
+    dueDate.setDate(creditCard?.dueDay || 10);
+    
+    const paidAmount = invoice?.paidAmount ? parseFloat(invoice.paidAmount) : 0;
+    
+    if (paidAmount >= totalInvoiceAmount && totalInvoiceAmount > 0) {
+      return { status: "PAGO", color: "text-green-600" };
+    } else if (paidAmount > 0 && paidAmount < totalInvoiceAmount) {
+      return { status: "PARCIAL", color: "text-yellow-600" };
+    } else if (today > dueDate && totalInvoiceAmount > 0) {
+      return { status: "VENCIDA", color: "text-red-600" };
+    } else if (today > closingDate) {
+      return { status: "FECHADA", color: "text-blue-600" };
+    } else {
+      return { status: "ABERTA", color: "text-gray-600" };
+    }
+  };
+
+  const invoiceStatus = getInvoiceStatus();
+
   // Payment mutation
   const payInvoiceMutation = useMutation({
     mutationFn: async (data: { invoiceId: string; amount: string }) => {
@@ -255,7 +279,9 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Resumo da Fatura</span>
-                {invoice && getStatusBadge(invoice.status, endDate, totalInvoiceAmount, parseFloat(invoice.paidAmount))}
+                <Badge className={invoiceStatus.color}>
+                  {invoiceStatus.status}
+                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
