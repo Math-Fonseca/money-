@@ -32,7 +32,10 @@ export default function Charts({ summary, categories }: ChartProps) {
 
     // Income vs Expenses Chart
     if (incomeExpensesChartRef.current) {
-      Chart.getChart(incomeExpensesChartRef.current)?.destroy();
+      const existingChart = Chart.getChart(incomeExpensesChartRef.current);
+      if (existingChart) {
+        existingChart.destroy();
+      }
 
       const fetchMonthlyData = async () => {
         const monthlyData = [];
@@ -49,6 +52,7 @@ export default function Charts({ summary, categories }: ChartProps) {
           
           try {
             const response = await fetch(`/api/financial-summary?month=${month}&year=${year}`);
+            if (!response.ok) throw new Error('Failed to fetch');
             const data = await response.json();
             
             monthlyData.push({
@@ -126,7 +130,10 @@ export default function Charts({ summary, categories }: ChartProps) {
 
     // Category Breakdown Chart
     if (categoryChartRef.current && summary?.expensesByCategory) {
-      Chart.getChart(categoryChartRef.current)?.destroy();
+      const existingCategoryChart = Chart.getChart(categoryChartRef.current);
+      if (existingCategoryChart) {
+        existingCategoryChart.destroy();
+      }
       
       const expensesByCategory = summary.expensesByCategory;
       

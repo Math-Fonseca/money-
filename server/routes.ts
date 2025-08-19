@@ -240,15 +240,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Handle installments for credit card purchases - CORRIGIDO DEFINITIVAMENTE
+      // Handle installments for credit card purchases - VALOR INDIVIDUAL POR PARCELA
       if (transactionData.installments && transactionData.installments > 1) {
         const totalAmount = parseFloat(transactionData.amount);
         const installmentAmount = totalAmount / transactionData.installments;
         
-        // Create parent transaction (first installment) with CORRECT installment amount
+        // Create parent transaction (first installment) - VALOR INDIVIDUAL DA PARCELA
         const parentTransaction = await storage.createTransaction({
           ...transactionData,
-          amount: installmentAmount.toFixed(2), // ⚡️ VALOR DA PARCELA, NÃO DO TOTAL
+          amount: installmentAmount.toFixed(2), // VALOR POR PARCELA: R$ 500/3 = R$ 166,67
           installmentNumber: 1,
           isInstallment: true,
           installments: transactionData.installments,
@@ -274,12 +274,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         await Promise.all(promises);
 
-        // ⚡️ ATUALIZAR LIMITE DO CARTÃO COM VALOR TOTAL - DEFINITIVO
+        // ⚡️ ATUALIZAR LIMITE DO CARTÃO COM VALOR TOTAL DA COMPRA
         if (transactionData.creditCardId && transactionData.type === 'expense') {
           const creditCard = await storage.getCreditCardById(transactionData.creditCardId);
           if (creditCard) {
             const currentUsed = parseFloat(creditCard.currentUsed || "0");
-            const newCurrentUsed = currentUsed + totalAmount;
+            const newCurrentUsed = currentUsed + totalAmount; // R$ 500 TOTAL
             
             await storage.updateCreditCard(transactionData.creditCardId, {
               currentUsed: newCurrentUsed.toFixed(2)
