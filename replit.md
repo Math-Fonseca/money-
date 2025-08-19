@@ -12,6 +12,14 @@ UI Language: Portuguese (Brazilian).
 
 # System Architecture
 
+## MVC Architecture Implementation (August 2025)
+- **Models**: Domain models with business logic, validation, and data transformation (BaseModel, TransactionModel, CreditCardModel)
+- **Views**: React components serve as views with separation of concerns
+- **Controllers**: HTTP request handlers with proper error handling and response formatting (BaseController, TransactionController, CreditCardController)
+- **Services**: Business logic layer handling complex operations and model interactions (TransactionService, CreditCardService)
+- **Middleware**: Validation, error handling, and request processing middleware
+- **Utilities**: Response formatting, validation schemas, and helper functions
+
 ## Database Architecture
 - **Multi-User Support**: Complete user authentication system with Replit Auth integration
 - **User Association**: All entities (categories, transactions, credit cards, subscriptions, budgets, settings) linked to user IDs
@@ -31,11 +39,13 @@ UI Language: Portuguese (Brazilian).
 - **File Upload**: Avatar support with automatic image generation
 
 ## Backend Architecture
-- **Framework**: Express.js with TypeScript
+- **Framework**: Express.js with TypeScript following MVC pattern
 - **Database ORM**: Drizzle ORM with PostgreSQL dialect
-- **API Design**: RESTful API with JSON responses
+- **API Design**: RESTful API with standardized JSON responses
 - **Development Mode**: Vite middleware integration for hot reloading
-- **Storage Layer**: Abstracted storage interface with in-memory implementation for development
+- **Storage Layer**: Abstracted storage interface with service layer for business logic
+- **Validation**: Zod schemas for request validation with middleware
+- **Error Handling**: Centralized error handling with custom error classes
 
 ## Database Schema Design
 - **Categories**: Store transaction categories with icons, colors, and types (income/expense)
