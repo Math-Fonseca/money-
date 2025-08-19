@@ -253,6 +253,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isInstallment: true,
           installments: transactionData.installments,
         });
+        
+        console.log(`PARCELA CRIADA: ${parentTransaction.amount} (Total: ${totalAmount}, Parcelas: ${transactionData.installments})`);
 
         // Create additional installments
         const promises = [];
