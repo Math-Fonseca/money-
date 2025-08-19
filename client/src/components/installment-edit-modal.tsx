@@ -41,7 +41,7 @@ export default function InstallmentEditModal({
   const editSingleMutation = useMutation({
     mutationFn: async () => {
       if (!transaction || !editData) return;
-      await apiRequest("PUT", `/api/transactions/${transaction.id}`, editData);
+      await apiRequest(`/api/transactions/${transaction.id}`, "PUT", editData);
     },
     onSuccess: () => {
       toast({
@@ -74,7 +74,7 @@ export default function InstallmentEditModal({
       // Para parcelas, sempre implementar lógica proporcional quando alterando valor
       if (editData.amount) {
         // Se estamos editando qualquer parcela, todas as outras devem ter o mesmo valor
-        await apiRequest("PUT", `/api/transactions/installments/${parentId}`, {
+        await apiRequest(`/api/transactions/installments/${parentId}`, "PUT", {
           ...editData,
           proportionalAmount: true // Flag para indicar atualização proporcional
         });

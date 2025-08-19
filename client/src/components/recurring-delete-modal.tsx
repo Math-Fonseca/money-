@@ -32,7 +32,7 @@ export default function RecurringDeleteModal({
 
   const deleteSingleMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/transactions/${id}`);
+      await apiRequest(`/api/transactions/${id}`, "DELETE");
     },
     onSuccess: () => {
       toast({
@@ -55,7 +55,7 @@ export default function RecurringDeleteModal({
 
   const deleteAllRecurringMutation = useMutation({
     mutationFn: async (parentId: string) => {
-      await apiRequest("DELETE", `/api/transactions/recurring/${parentId}`);
+      await apiRequest(`/api/transactions/recurring/${parentId}`, "DELETE");
     },
     onSuccess: () => {
       toast({

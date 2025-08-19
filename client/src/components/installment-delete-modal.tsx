@@ -34,7 +34,7 @@ export default function InstallmentDeleteModal({
 
   const deleteSingleMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/transactions/${id}`);
+      await apiRequest(`/api/transactions/${id}`, "DELETE");
     },
     onSuccess: () => {
       toast({
@@ -57,7 +57,7 @@ export default function InstallmentDeleteModal({
 
   const deleteAllInstallmentsMutation = useMutation({
     mutationFn: async (parentId: string) => {
-      await apiRequest("DELETE", `/api/transactions/installments/${parentId}`);
+      await apiRequest(`/api/transactions/installments/${parentId}`, "DELETE");
     },
     onSuccess: () => {
       toast({

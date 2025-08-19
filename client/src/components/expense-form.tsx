@@ -101,7 +101,7 @@ export default function ExpenseForm({ categories }: ExpenseFormProps) {
   const createExpenseMutation = useMutation({
     mutationFn: async (data: ExpenseFormData) => {
       // Não atualizar o cartão manualmente aqui - o backend já faz isso
-      const response = await apiRequest("POST", "/api/transactions", {
+      const response = await apiRequest("/api/transactions", "POST", {
         ...data,
         type: "expense",
         creditCardId: data.paymentMethod === "credito" ? data.creditCardId : null,

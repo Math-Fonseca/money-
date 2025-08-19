@@ -39,7 +39,7 @@ export default function RecurringEditModal({
   const editSingleMutation = useMutation({
     mutationFn: async () => {
       if (!transaction || !editData) return;
-      await apiRequest("PUT", `/api/transactions/${transaction.id}`, editData);
+      await apiRequest(`/api/transactions/${transaction.id}`, "PUT", editData);
     },
     onSuccess: () => {
       toast({
@@ -65,7 +65,7 @@ export default function RecurringEditModal({
     mutationFn: async () => {
       if (!transaction || !editData) return;
       const parentId = transaction.parentTransactionId || transaction.id;
-      await apiRequest("PUT", `/api/transactions/recurring/${parentId}`, editData);
+      await apiRequest(`/api/transactions/recurring/${parentId}`, "PUT", editData);
     },
     onSuccess: () => {
       toast({

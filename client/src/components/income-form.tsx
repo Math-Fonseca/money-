@@ -59,7 +59,7 @@ export default function IncomeForm({ categories }: IncomeFormProps) {
         installments: 1,
         installmentNumber: 1,
       };
-      transactions.push(apiRequest("POST", "/api/transactions", mainTransaction));
+      transactions.push(apiRequest("/api/transactions", "POST", mainTransaction));
       
       // Auto-add VT and VR if enabled
       if (includeVTVR) {
@@ -72,7 +72,7 @@ export default function IncomeForm({ categories }: IncomeFormProps) {
           const workingDays = calculateWorkingDays(new Date(data.date));
           const monthlyVT = parseFloat(vtSetting.value) * workingDays;
           
-          transactions.push(apiRequest("POST", "/api/transactions", {
+          transactions.push(apiRequest("/api/transactions", "POST", {
             description: `VT ${new Date(data.date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
             amount: monthlyVT.toFixed(2),
             date: data.date,
@@ -88,7 +88,7 @@ export default function IncomeForm({ categories }: IncomeFormProps) {
           const workingDays = calculateWorkingDays(new Date(data.date));
           const monthlyVR = parseFloat(vrSetting.value) * workingDays;
           
-          transactions.push(apiRequest("POST", "/api/transactions", {
+          transactions.push(apiRequest("/api/transactions", "POST", {
             description: `VR ${new Date(data.date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
             amount: monthlyVR.toFixed(2),
             date: data.date,

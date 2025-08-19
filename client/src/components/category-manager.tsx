@@ -62,9 +62,9 @@ export function CategoryManager() {
   const createCategoryMutation = useMutation({
     mutationFn: (data: CategoryFormData) => {
       if (editingCategory) {
-        return apiRequest("PUT", `/api/categories/${editingCategory.id}`, data);
+        return apiRequest(`/api/categories/${editingCategory.id}`, "PUT", data);
       } else {
-        return apiRequest("POST", "/api/categories", data);
+        return apiRequest("/api/categories", "POST", data);
       }
     },
     onSuccess: () => {
@@ -74,7 +74,7 @@ export function CategoryManager() {
   });
 
   const deleteCategoryMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/categories/${id}`),
+    mutationFn: (id: string) => apiRequest(`/api/categories/${id}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
     },
