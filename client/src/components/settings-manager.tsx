@@ -51,10 +51,11 @@ export default function SettingsManager() {
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: SettingsFormData) => {
+      console.log('Sending settings data:', data);
       const promises = [
-        apiRequest("POST", "/api/settings", { key: "dailyVT", value: data.dailyVT }),
-        apiRequest("POST", "/api/settings", { key: "dailyVR", value: data.dailyVR }),
-        apiRequest("POST", "/api/settings", { key: "salary", value: data.salary })
+        apiRequest("/api/settings", "POST", { key: "dailyVT", value: data.dailyVT }),
+        apiRequest("/api/settings", "POST", { key: "dailyVR", value: data.dailyVR }),
+        apiRequest("/api/settings", "POST", { key: "salary", value: data.salary })
       ];
       await Promise.all(promises);
     },
@@ -66,7 +67,8 @@ export default function SettingsManager() {
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Settings error:', error);
       toast({
         title: "Erro",
         description: "Erro ao salvar configurações. Tente novamente.",
