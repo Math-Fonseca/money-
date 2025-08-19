@@ -1170,30 +1170,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get subscriptions for credit card in specific period
+  // Get subscriptions for credit card in specific period - LÓGICA CORRIGIDA
   app.get("/api/subscriptions/credit-card/:creditCardId/:startDate/:endDate", async (req, res) => {
     try {
       const { creditCardId, startDate, endDate } = req.params;
       const subscriptions = await storage.getSubscriptions();
       
-      // Filter active subscriptions for this credit card
-      const creditCardSubscriptions = subscriptions.filter(subscription => 
-        subscription.creditCardId === creditCardId && 
-        subscription.paymentMethod === 'credito' &&
-        subscription.isActive
-      );
+      // ⚡️ LÓGICA CORRETA: apenas assinaturas ativas criadas antes do final do período
+      const creditCardSubscriptions = subscriptions.filter(subscription => {
+        if (subscription.creditCardId !== creditCardId || subscription.paymentMethod !== 'credito' || !subscription.isActive) {
+          return false;
+        }
+        
+        // ⚡️ Assinatura deve ter sido criada antes do final do período para aparecer na fatura
+        const subscriptionCreated = new Date(subscription.createdAt || new Date());
+        const periodEnd = new Date(endDate);
+        
+        // ⚡️ REGRA CORRETA: só aparecer nas faturas a partir do mês de criação da assinatura
+        return subscriptionCreated <= periodEnd;
+      });
 
       // ⚡️ TRANSFORMAR ASSINATURAS EM FORMATO DE TRANSAÇÃO PARA FATURA
       const subscriptionTransactions = creditCardSubscriptions.map(subscription => ({
         id: `subscription-${subscription.id}`,
-        description: `🔄 ${subscription.name} (Assinatura)`,
+        description: `${subscription.name}`,
         amount: subscription.amount,
-        date: startDate, // Data de início do período da fatura
+        date: subscription.billingDate || startDate, // ⚡️ Data de cobrança ou início do período
         type: 'expense' as const,
         categoryId: subscription.categoryId,
         paymentMethod: 'credito',
         isSubscription: true,
-        subscriptionId: subscription.id
+        subscriptionId: subscription.id,
+        service: subscription.service,
+        isRecurring: 'Recorrente'
       }));
       
       res.json(subscriptionTransactions);
