@@ -138,9 +138,14 @@ export default function CreditCardManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: creditCards = [] } = useQuery<CreditCard[]>({
+  const { data: creditCardsResponse } = useQuery<{
+    success: boolean;
+    data: CreditCard[];
+  }>({
     queryKey: ["/api/credit-cards"],
   });
+
+  const creditCards = creditCardsResponse?.data || [];
 
   const form = useForm<CreditCardFormData>({
     resolver: zodResolver(creditCardFormSchema),
