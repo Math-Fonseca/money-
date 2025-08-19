@@ -71,11 +71,11 @@ const getBrandInfo = (brand: string) => {
 
 // Opções de bandeiras de cartão para o formulário
 const cardBrands = [
-  { id: 'mastercard', name: 'MasterCard', color: '#EB001B' },
-  { id: 'visa', name: 'Visa', color: '#1A1F71' },
-  { id: 'elo', name: 'Elo', color: '#FFC700' },
-  { id: 'american-express', name: 'American Express', color: '#006FCF' },
-  { id: 'hipercard', name: 'Hipercard', color: '#E30613' }
+  { id: 'mastercard', name: 'MasterCard', icon: '💳', color: '#EB001B' },
+  { id: 'visa', name: 'Visa', icon: '💳', color: '#1A1F71' },
+  { id: 'elo', name: 'Elo', icon: '💳', color: '#FFC700' },
+  { id: 'american-express', name: 'American Express', icon: '💳', color: '#006FCF' },
+  { id: 'hipercard', name: 'Hipercard', icon: '💳', color: '#E30613' }
 ];
 
 // Função para obter informações do banco
