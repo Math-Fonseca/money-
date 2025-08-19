@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -126,9 +126,9 @@ export function CategoryManager() {
               <DialogTitle>
                 {editingCategory ? "Editar Categoria" : "Nova Categoria"}
               </DialogTitle>
-              <p id="category-dialog-description" className="text-sm text-gray-600">
+              <DialogDescription>
                 {editingCategory ? "Edite os dados da categoria" : "Crie uma nova categoria para organizar suas transações"}
-              </p>
+              </DialogDescription>
             </DialogHeader>
             
             <Form {...form}>

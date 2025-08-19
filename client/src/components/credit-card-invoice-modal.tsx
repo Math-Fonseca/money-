@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -253,6 +253,9 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
             <CreditCard className="w-5 h-5" />
             Fatura - {creditCard.name}
           </DialogTitle>
+          <DialogDescription>
+            Visualize e gerencie a fatura do cartão de crédito
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

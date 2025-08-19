@@ -808,7 +808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      // Adicionar transações de cartão de crédito baseado no ciclo de faturamento
+      // Adicionar transações de cartão de crédito que devem aparecer neste mês
       for (const card of creditCards) {
         const cardTransactions = await storage.getTransactions();
         
@@ -833,6 +833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return invoiceMonth === targetMonth && invoiceYear === targetYear;
         });
         
+        // Adicionar transações de cartão por categoria
         relevantCardTransactions.forEach(t => {
           if (t.categoryId) {
             expensesByCategory[t.categoryId] = (expensesByCategory[t.categoryId] || 0) + parseFloat(t.amount);
@@ -840,10 +841,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Adicionar assinaturas às categorias - aplicando a mesma lógica de ciclo de faturamento
+      // Adicionar assinaturas por categoria
       for (const sub of subscriptions) {
         if (sub.categoryId) {
-          // Se a assinatura é paga via cartão de crédito, aplicar lógica de ciclo de faturamento
+          // Aplicar mesma lógica de ciclo de faturamento para assinaturas
           if (sub.paymentMethod === 'credito' && sub.creditCardId) {
             const card = creditCards.find(c => c.id === sub.creditCardId);
             if (card) {
@@ -861,11 +862,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
               
-              // Adicionar assinatura à categoria se deve aparecer neste mês
               expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
             }
           } else {
-            // Assinaturas não pagas via cartão de crédito são contabilizadas normalmente
             expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
           }
         }
