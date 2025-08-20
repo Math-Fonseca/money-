@@ -9,17 +9,20 @@ neonConfig.webSocketConstructor = ws;
 
 // Check if we have a database URL
 if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+  console.warn(
+    "DATABASE_URL not set. Using in-memory storage only.",
   );
 }
 
-// Create connection pool
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Create connection pool only if DATABASE_URL is available
+export const pool = process.env.DATABASE_URL 
+  ? new Pool({ connectionString: process.env.DATABASE_URL })
+  : null;
 
-// Create database instance with all schemas
-const allSchemas = { ...schema, ...authSchema };
-export const db = drizzle({ client: pool, schema: allSchemas });
+// Create database instance with all schemas only if pool exists
+export const db = pool 
+  ? drizzle({ client: pool, schema: { ...schema, ...authSchema } })
+  : null;
 
 // Export individual schema modules for convenience
 export { schema, authSchema };

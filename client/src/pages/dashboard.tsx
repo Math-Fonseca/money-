@@ -37,12 +37,19 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
     }
   }, [userData.email]);
 
+  // Forçar atualização dos dados quando voltar para a aba dashboard
+  useEffect(() => {
+    if (activeTab === "dashboard") {
+      console.log('Dashboard tab activated');
+    }
+  }, [activeTab]);
+
   const handleCloseTutorial = () => {
     setShowTutorial(false);
     localStorage.setItem(`tutorial_seen_${userData.email}`, 'true');
   };
-  
-  const { data: summary, refetch: refetchSummary } = useQuery<{
+
+  const { data: summary, refetch: refetchSummary, isLoading: summaryLoading } = useQuery<{
     totalIncome: number;
     totalExpenses: number;
     currentBalance: number;
@@ -54,18 +61,23 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
   }>({
     queryKey: ["/api/financial-summary", selectedMonth, selectedYear],
     queryFn: async () => {
+      console.log('Fetching financial summary for:', { selectedMonth, selectedYear });
       const response = await fetch(`/api/financial-summary?month=${selectedMonth}&year=${selectedYear}`);
       if (!response.ok) {
         throw new Error('Failed to fetch financial summary');
       }
-      return response.json();
+      const data = await response.json();
+      console.log('Financial summary data:', data);
+      return data;
     },
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
     staleTime: 0,
     gcTime: 0,
   });
 
-  const { data: categories = [] } = useQuery<Array<{
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery<Array<{
     id: string;
     name: string;
     icon: string;
@@ -73,7 +85,19 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
     type: string;
   }>>({
     queryKey: ["/api/categories"],
+    queryFn: async () => {
+      console.log('Fetching categories');
+      const response = await fetch('/api/categories');
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories');
+      }
+      const data = await response.json();
+      console.log('Categories data:', data);
+      return data;
+    },
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
     staleTime: 0,
   });
 
@@ -95,9 +119,9 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
 
   const transactions = transactionsResponse?.data || [];
 
-  const currentDate = new Date().toLocaleDateString('pt-BR', { 
-    month: 'long', 
-    year: 'numeric' 
+  const currentDate = new Date().toLocaleDateString('pt-BR', {
+    month: 'long',
+    year: 'numeric'
   }).replace(' de ', '/').replace(/^./, str => str.toUpperCase());
 
   return (
@@ -113,7 +137,7 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600 capitalize">{currentDate}</span>
-              <UserProfile 
+              <UserProfile
                 userData={userData}
                 onUpdateProfile={onUpdateProfile}
                 onLogout={onLogout}
@@ -128,7 +152,7 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <NavigationTabs activeTab={activeTab} onTabChange={setActiveTab} />
             {activeTab === "dashboard" && (
-              <MonthSelector 
+              <MonthSelector
                 currentMonth={selectedMonth}
                 currentYear={selectedYear}
                 onMonthChange={(month, year) => {
@@ -144,20 +168,17 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
           <div className="space-y-8">
             <MonthProgress />
             <FinancialSummary summary={summary} />
-            <Charts 
-              summary={summary} 
+            <Charts
+              summary={summary}
               categories={categories || []}
-              transactions={transactions || []}
-              selectedMonth={selectedMonth}
-              selectedYear={selectedYear}
             />
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">Transações Recentes</h3>
               </div>
               <div className="p-6">
-                <TransactionHistory 
-                  transactions={(transactions || []).slice(0, 5)} 
+                <TransactionHistory
+                  transactions={(transactions || []).slice(0, 5)}
                   categories={categories || []}
                   showFilters={false}
                 />
@@ -175,8 +196,8 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
         )}
 
         {activeTab === "history" && (
-          <HistoryFilters 
-            transactions={transactions} 
+          <HistoryFilters
+            transactions={transactions}
             categories={categories}
           />
         )}
@@ -201,11 +222,11 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
           <SettingsManager />
         )}
       </div>
-      
+
       {/* Tutorial de boas-vindas */}
-      <WelcomeTutorial 
-        isOpen={showTutorial} 
-        onClose={handleCloseTutorial} 
+      <WelcomeTutorial
+        isOpen={showTutorial}
+        onClose={handleCloseTutorial}
       />
     </div>
   );

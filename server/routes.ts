@@ -93,9 +93,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Categories
   app.get("/api/categories", async (req, res) => {
     try {
+      console.log('Categories request received');
       const categories = await storage.getCategories();
+      console.log('Categories found:', categories.length);
       res.json(categories);
     } catch (error) {
+      console.error('Error fetching categories:', error);
       res.status(500).json({ message: "Failed to fetch categories" });
     }
   });
@@ -628,15 +631,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Financial summary endpoint
   app.get("/api/financial-summary", async (req, res) => {
     try {
+      console.log('Financial summary request received:', req.query);
       const { month, year } = req.query;
       const currentDate = new Date();
       const targetMonth = month ? parseInt(month as string) : currentDate.getMonth() + 1;
       const targetYear = year ? parseInt(year as string) : currentDate.getFullYear();
       
+      console.log('Target month/year:', { targetMonth, targetYear });
+      
       const startDate = `${targetYear}-${targetMonth.toString().padStart(2, '0')}-01`;
       const endDate = new Date(targetYear, targetMonth, 0).toISOString().split('T')[0];
       
+      console.log('Date range:', { startDate, endDate });
+      
       const transactions = await storage.getTransactionsByDateRange(startDate, endDate);
+      console.log('Transactions found:', transactions.length);
       
       // Get all settings
       const settings = await storage.getSettings();
@@ -756,17 +765,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate expenses by category (incluindo assinaturas) - aplicando a mesma lógica de ciclo de faturamento
       const expensesByCategory: Record<string, number> = {};
       
+      console.log('Calculating expenses by category for:', { targetMonth, targetYear });
+      console.log('Total transactions found:', transactions.length);
+      
       // Adicionar TODAS as transações de despesa do mês atual (independente do método de pagamento)
       const currentMonthTransactions = transactions.filter(t => {
         if (t.type !== 'expense') return false;
         const transactionDate = new Date(t.date);
-        return transactionDate.getMonth() + 1 === targetMonth && 
-               transactionDate.getFullYear() === targetYear;
+        const transactionMonth = transactionDate.getMonth() + 1;
+        const transactionYear = transactionDate.getFullYear();
+        const matches = transactionMonth === targetMonth && transactionYear === targetYear;
+        
+        if (matches) {
+          console.log('Found expense transaction:', {
+            id: t.id,
+            description: t.description,
+            amount: t.amount,
+            categoryId: t.categoryId,
+            date: t.date,
+            transactionMonth,
+            transactionYear
+          });
+        }
+        
+        return matches;
       });
+      
+      console.log('Current month expense transactions:', currentMonthTransactions.length);
       
       currentMonthTransactions.forEach(t => {
         if (t.categoryId) {
-          expensesByCategory[t.categoryId] = (expensesByCategory[t.categoryId] || 0) + parseFloat(t.amount);
+          const currentAmount = expensesByCategory[t.categoryId] || 0;
+          const newAmount = currentAmount + parseFloat(t.amount);
+          expensesByCategory[t.categoryId] = newAmount;
+          console.log('Added to category:', {
+            categoryId: t.categoryId,
+            amount: t.amount,
+            totalForCategory: newAmount
+          });
+        } else {
+          console.log('Transaction without categoryId:', t.id);
         }
       });
       
@@ -779,7 +817,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      res.json({
+      console.log('Final expensesByCategory:', expensesByCategory);
+      console.log('Response being sent:', {
+        totalIncome,
+        totalExpenses,
+        currentBalance,
+        expensesByCategory,
+        expensesByCategoryKeys: Object.keys(expensesByCategory),
+        expensesByCategoryValues: Object.values(expensesByCategory)
+      });
+      
+      const responseData = {
         totalIncome,
         totalExpenses,
         currentBalance,
@@ -792,7 +840,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscriptionExpenses,
         activeSubscriptions: subscriptions.length,
         transactions: transactions.slice(0, 10), // Recent transactions
-      });
+      };
+      
+      console.log('Response data object:', responseData);
+      console.log('Response JSON string:', JSON.stringify(responseData));
+      
+      res.json(responseData);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch financial summary" });
     }

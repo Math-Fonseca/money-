@@ -175,6 +175,27 @@ export async function registerLegacyRoutes(app: Express): Promise<Server> {
       const totalExpensesWithSubscriptions = totalExpenses + subscriptionExpenses;
       const currentBalance = totalIncome - totalExpensesWithSubscriptions;
       
+      // Calculate expenses by category
+      const expensesByCategory: Record<string, number> = {};
+      
+      // Add expenses from transactions
+      filteredTransactions
+        .filter(t => t.type === 'expense')
+        .forEach(t => {
+          if (t.categoryId) {
+            expensesByCategory[t.categoryId] = (expensesByCategory[t.categoryId] || 0) + parseFloat(t.amount);
+          }
+        });
+      
+      // Add expenses from subscriptions
+      activeSubscriptions.forEach(sub => {
+        if (sub.categoryId) {
+          expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
+        }
+      });
+      
+      console.log('Legacy route - expensesByCategory:', expensesByCategory);
+      
       // Calculate budget summary
       const totalBudget = budgets.reduce((sum, b) => sum + parseFloat(b.amount), 0);
       const budgetUsed = budgets.reduce((sum, b) => {
@@ -188,6 +209,7 @@ export async function registerLegacyRoutes(app: Express): Promise<Server> {
         totalIncome,
         totalExpenses: totalExpensesWithSubscriptions,
         currentBalance,
+        expensesByCategory,
         totalBudget,
         budgetUsed,
         budgetRemaining: Math.max(0, totalBudget - budgetUsed),
