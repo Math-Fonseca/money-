@@ -35,37 +35,37 @@ type CreditCardFormData = z.infer<typeof creditCardFormSchema>;
 // Função para obter informações da bandeira
 const getBrandInfo = (brand: string) => {
   const brands: { [key: string]: { name: string; icon: JSX.Element; color: string } } = {
-    'mastercard': { 
-      name: 'MasterCard', 
-      icon: <CreditCard size={20} className="text-red-600" />, 
-      color: '#EB001B' 
+    'mastercard': {
+      name: 'MasterCard',
+      icon: <CreditCard size={20} className="text-red-600" />,
+      color: '#EB001B'
     },
-    'visa': { 
-      name: 'Visa', 
-      icon: <CreditCard size={20} className="text-blue-600" />, 
-      color: '#1A1F71' 
+    'visa': {
+      name: 'Visa',
+      icon: <CreditCard size={20} className="text-blue-600" />,
+      color: '#1A1F71'
     },
-    'elo': { 
-      name: 'Elo', 
-      icon: <CreditCard size={20} className="text-yellow-600" />, 
-      color: '#FFC700' 
+    'elo': {
+      name: 'Elo',
+      icon: <CreditCard size={20} className="text-yellow-600" />,
+      color: '#FFC700'
     },
-    'american-express': { 
-      name: 'American Express', 
-      icon: <CreditCard size={20} className="text-blue-700" />, 
-      color: '#006FCF' 
+    'american-express': {
+      name: 'American Express',
+      icon: <CreditCard size={20} className="text-blue-700" />,
+      color: '#006FCF'
     },
-    'hipercard': { 
-      name: 'Hipercard', 
-      icon: <CreditCard size={20} className="text-red-700" />, 
-      color: '#E30613' 
+    'hipercard': {
+      name: 'Hipercard',
+      icon: <CreditCard size={20} className="text-red-700" />,
+      color: '#E30613'
     }
   };
-  
-  return brands[brand] || { 
-    name: brand, 
-    icon: <CreditCard size={20} className="text-gray-600" />, 
-    color: '#6B7280' 
+
+  return brands[brand] || {
+    name: brand,
+    icon: <CreditCard size={20} className="text-gray-600" />,
+    color: '#6B7280'
   };
 };
 
@@ -91,7 +91,7 @@ const getBankInfo = (bank: string) => {
     'inter': { name: 'Inter', icon: '🏦', color: '#FF7A00' },
     'c6': { name: 'C6 Bank', icon: '🏦', color: '#FFD500' }
   };
-  
+
   return banks[bank] || { name: bank, icon: '🏦', color: '#6B7280' };
 };
 
@@ -146,6 +146,10 @@ export default function CreditCardManager() {
   });
 
   const creditCards = creditCardsResponse?.data || [];
+
+  // Debug: log dos dados recebidos
+  console.log('CreditCardsResponse:', creditCardsResponse);
+  console.log('CreditCards:', creditCards);
 
   const form = useForm<CreditCardFormData>({
     resolver: zodResolver(creditCardFormSchema),
@@ -281,7 +285,7 @@ export default function CreditCardManager() {
                 {isEditMode ? "Editar Cartão de Crédito" : "Cadastrar Cartão de Crédito"}
               </DialogTitle>
             </DialogHeader>
-            
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
@@ -364,8 +368,8 @@ export default function CreditCardManager() {
                       <FormItem>
                         <FormLabel>Limite</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="R$ 1.000,00" 
+                          <Input
+                            placeholder="R$ 1.000,00"
                             {...field}
                           />
                         </FormControl>
@@ -373,7 +377,7 @@ export default function CreditCardManager() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="color"
@@ -381,7 +385,7 @@ export default function CreditCardManager() {
                       <FormItem>
                         <FormLabel>Cor do Cartão</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="color"
                             {...field}
                           />
@@ -400,10 +404,10 @@ export default function CreditCardManager() {
                       <FormItem>
                         <FormLabel>Dia de Fechamento</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min="1" 
-                            max="31" 
+                          <Input
+                            type="number"
+                            min="1"
+                            max="31"
                             placeholder="5"
                             {...field}
                           />
@@ -420,10 +424,10 @@ export default function CreditCardManager() {
                       <FormItem>
                         <FormLabel>Dia de Vencimento</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min="1" 
-                            max="31" 
+                          <Input
+                            type="number"
+                            min="1"
+                            max="31"
                             placeholder="15"
                             {...field}
                           />
@@ -494,12 +498,12 @@ export default function CreditCardManager() {
             const remainingLimit = parseFloat(card.limit) - parseFloat(card.currentUsed);
 
             return (
-              <Card 
-                key={card.id} 
+              <Card
+                key={card.id}
                 className={`relative overflow-hidden cursor-pointer hover:shadow-lg transition-all ${card.isBlocked ? 'opacity-60' : ''}`}
                 onClick={() => handleCardClick(card)}
               >
-                <div 
+                <div
                   className="absolute top-0 left-0 w-full h-1"
                   style={{ backgroundColor: bankInfo.color }}
                 />
@@ -555,9 +559,9 @@ export default function CreditCardManager() {
                         <span>Limite: {formatCurrency(card.limit)}</span>
                       </div>
                       <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full transition-all duration-300 rounded-full"
-                          style={{ 
+                          style={{
                             width: `${Math.min(usagePercentage, 100)}%`,
                             backgroundColor: usagePercentage >= 90 ? '#EF4444' : usagePercentage >= 70 ? '#F59E0B' : '#10B981'
                           }}
@@ -580,7 +584,7 @@ export default function CreditCardManager() {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <Badge 
+                      <Badge
                         variant={usagePercentage > 80 ? "destructive" : usagePercentage > 60 ? "default" : "secondary"}
                       >
                         {usagePercentage.toFixed(1)}% utilizado
@@ -613,11 +617,11 @@ export default function CreditCardManager() {
   function handleCardClick(card: CreditCard) {
     // Se o cartão estiver bloqueado, abrir modo edição em vez da fatura
     if (card.isBlocked) {
-      const fakeEvent = { stopPropagation: () => {} } as React.MouseEvent<HTMLButtonElement>;
+      const fakeEvent = { stopPropagation: () => { } } as React.MouseEvent<HTMLButtonElement>;
       handleEditCard(card, fakeEvent);
       return;
     }
-    
+
     setSelectedCreditCard(card);
     setIsInvoiceModalOpen(true);
   }

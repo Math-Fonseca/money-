@@ -8,7 +8,6 @@ export default function NavigationTabs({ activeTab, onTabChange }: NavigationTab
     { id: "dashboard", label: "📊 Dashboard", short: "📊" },
     { id: "income", label: "💵 Receitas", short: "💵" },
     { id: "expenses", label: "💸 Despesas", short: "💸" },
-    { id: "history", label: "📋 Histórico", short: "📋" },
     { id: "credit-expenses", label: "💳 Cartão Crédito", short: "💳" },
     { id: "credit-cards", label: "💳 Cartões", short: "💳" },
     { id: "subscriptions", label: "📱 Assinaturas", short: "📱" },
@@ -23,11 +22,10 @@ export default function NavigationTabs({ activeTab, onTabChange }: NavigationTab
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`flex-shrink-0 py-2 px-3 sm:py-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-colors min-w-fit ${
-              activeTab === tab.id
+            className={`flex-shrink-0 py-2 px-3 sm:py-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-colors min-w-fit ${activeTab === tab.id
                 ? "text-primary bg-white shadow-sm"
                 : "text-gray-600 bg-transparent hover:text-gray-900"
-            }`}
+              }`}
           >
             <span className="sm:hidden">{tab.short}</span>
             <span className="hidden sm:inline">{tab.label}</span>

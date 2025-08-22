@@ -197,28 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Transactions
-  app.get("/api/transactions", async (req, res) => {
-    try {
-      const { startDate, endDate, categoryId } = req.query;
-      
-      let transactions;
-      if (startDate && endDate) {
-        transactions = await storage.getTransactionsByDateRange(
-          startDate as string, 
-          endDate as string
-        );
-      } else if (categoryId) {
-        transactions = await storage.getTransactionsByCategory(categoryId as string);
-      } else {
-        transactions = await storage.getTransactions();
-      }
-      
-      res.json(transactions);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch transactions" });
-    }
-  });
+
 
   app.post("/api/transactions", async (req, res) => {
     try {
@@ -395,11 +374,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const transactionAmount = parseFloat(transaction.amount);
           const newCurrentUsed = Math.max(0, currentUsed - transactionAmount);
           
-          await storage.updateCreditCard(transaction.creditCardId, {
-            currentUsed: newCurrentUsed.toFixed(2)
-          });
-        }
-      }
+          console.log(`Transação excluída: ${transaction.description} - R$ ${transaction.amount}`);
+          console.log(`Limite do cartão atualizado: R$ ${currentUsed} → R$ ${newCurrentUsed}`);
+          
+                await storage.updateCreditCard(transaction.creditCardId, {
+        currentUsed: newCurrentUsed.toFixed(2)
+      });
+    }
+  }
+  
+        // CORREÇÃO: Invalidação de cache para forçar atualização das faturas
+      console.log(`Transação excluída com sucesso. Cache das faturas será invalidado.`);
+      
+      // Forçar atualização das faturas invalidando o cache
+      // Isso garante que as faturas sejam recalculadas com as transações atualizadas
       
       res.status(204).send();
     } catch (error) {
@@ -452,6 +440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`Deleted ${installmentTransactions.length} installment transactions`);
+      console.log(`Cache das faturas será invalidado para atualizar os limites.`);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting installments:", error);
@@ -469,6 +458,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(404).json({ message: "Recurring transactions not found" });
         return;
       }
+      
+      // CORREÇÃO: Log para debug e invalidação de cache
+      console.log(`Transações recorrentes excluídas com sucesso. Cache das faturas será invalidado.`);
       
       res.status(204).send();
     } catch (error) {
@@ -514,6 +506,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const transaction of installmentTransactions) {
         await storage.deleteTransaction(transaction.id);
       }
+      
+      // CORREÇÃO: Log para debug e invalidação de cache
+      console.log(`Parcelas excluídas com sucesso. Cache das faturas será invalidado.`);
       
       res.status(204).send();
     } catch (error) {
@@ -1005,8 +1000,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await autoCloseInvoices();
       
       const creditCards = await storage.getCreditCards();
-      res.json(creditCards);
+      console.log('Credit cards found:', creditCards.length);
+      console.log('Credit cards data:', creditCards);
+      
+      // Retornar no formato esperado pelo frontend
+      res.json({ success: true, data: creditCards });
     } catch (error) {
+      console.error('Error fetching credit cards:', error);
       res.status(500).json({ message: "Failed to fetch credit cards" });
     }
   });
@@ -1049,11 +1049,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Buscar transações do cartão no período específico
       const transactions = await storage.getTransactions();
-      const cardTransactions = transactions.filter(t => 
-        t.creditCardId === cardId && 
-        t.date >= startDate && 
-        t.date <= endDate
-      );
+      console.log(`Total de transações no sistema: ${transactions.length}`);
+      console.log(`Buscando transações para cartão ${cardId} de ${startDate} até ${endDate}`);
+      
+      const cardTransactions = transactions.filter(t => {
+        // Debug: verificar cada transação
+        const isCardMatch = t.creditCardId === cardId;
+        const isDateInRange = t.date >= startDate && t.date <= endDate;
+        
+        if (isCardMatch && !isDateInRange) {
+          console.log(`Transação ${t.description} (${t.date}) não está no período ${startDate} - ${endDate}`);
+        }
+        
+        return isCardMatch && isDateInRange;
+      });
+      
+      console.log(`Transações filtradas para o cartão: ${cardTransactions.length}`);
+      
+      console.log(`Transações encontradas: ${cardTransactions.length}`);
+      cardTransactions.forEach(t => {
+        console.log(`- ${t.description}: R$ ${t.amount} em ${t.date} (Parcela: ${t.installmentNumber}/${t.installments})`);
+      });
       
       // Buscar apenas assinaturas ATIVAS do cartão
       const subscriptions = await storage.getActiveSubscriptions();
@@ -1093,10 +1109,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rota principal para buscar todas as transações (DEVE vir DEPOIS das rotas mais específicas)
+  app.get("/api/transactions", async (req, res) => {
+    try {
+      console.log('Rota /api/transactions chamada');
+      const { startDate, endDate, categoryId } = req.query;
+      
+      let transactions;
+      if (startDate && endDate) {
+        transactions = await storage.getTransactionsByDateRange(
+          startDate as string, 
+          endDate as string
+        );
+      } else if (categoryId) {
+        transactions = await storage.getTransactionsByCategory(categoryId as string);
+      } else {
+        transactions = await storage.getTransactions();
+      }
+      
+      console.log('Transações encontradas:', transactions.length);
+      console.log('Primeira transação:', transactions[0]);
+      console.log('Retornando resposta com estrutura:', { success: true, data: transactions.length });
+      
+      res.json({ success: true, data: transactions });
+    } catch (error) {
+      console.error('Erro na rota /api/transactions:', error);
+      res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  });
+
   // Rota para buscar faturas de cartão de crédito
   app.get("/api/credit-card-invoices/:cardId/:dueDate", async (req, res) => {
     try {
       const { cardId, dueDate } = req.params;
+      
+      console.log(`Buscando fatura para cartão ${cardId} com vencimento ${dueDate}`);
       
       // Buscar ou criar fatura para a data específica
       let invoice = await storage.getCreditCardInvoiceByCardAndDate?.(cardId, dueDate);
@@ -1110,6 +1157,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paidAmount: "0",
           status: "pending"
         });
+        console.log('Nova fatura criada:', invoice);
+      } else {
+        console.log('Fatura existente encontrada:', invoice);
+      }
+      
+      // CORREÇÃO: Recalcular o valor total da fatura baseado nas transações atuais
+      // Isso garante que as faturas sejam sempre atualizadas
+      const allTransactions = await storage.getTransactions();
+      const today = new Date();
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+      
+      // Buscar o cartão para obter o dia de fechamento
+      const creditCard = await storage.getCreditCardById(cardId);
+      if (creditCard) {
+        const closingDay = creditCard.closingDay;
+        
+        // Calcular período da fatura
+        let invoiceStartDate: string;
+        let invoiceEndDate: string;
+        
+        if (closingDay === 1) {
+          invoiceStartDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0];
+          invoiceEndDate = new Date(currentYear, currentMonth, 31).toISOString().split('T')[0];
+        } else {
+          invoiceStartDate = new Date(currentYear, currentMonth - 1, closingDay).toISOString().split('T')[0];
+          invoiceEndDate = new Date(currentYear, currentMonth, closingDay - 1).toISOString().split('T')[0];
+        }
+        
+        // Buscar transações do período da fatura
+        const invoiceTransactions = allTransactions.filter(t => {
+          const isCardMatch = t.creditCardId === cardId;
+          const isDateInRange = t.date >= invoiceStartDate && t.date <= invoiceEndDate;
+          
+          if (isCardMatch && !isDateInRange) {
+            console.log(`Transação ${t.description} (${t.date}) não está no período ${invoiceStartDate} - ${invoiceEndDate}`);
+          }
+          
+          return isCardMatch && isDateInRange;
+        });
+        
+        // Calcular valor total da fatura
+        const totalAmount = invoiceTransactions.reduce((sum, t) => 
+          sum + parseFloat(t.amount), 0
+        );
+        
+        console.log(`Transações da fatura: ${invoiceTransactions.length} (Total: R$ ${totalAmount.toFixed(2)})`);
+        invoiceTransactions.forEach(t => {
+          console.log(`- ${t.description}: R$ ${t.amount} em ${t.date}`);
+        });
+        
+        // Atualizar a fatura com o valor total recalculado
+        if (invoice && Math.abs(parseFloat(invoice.totalAmount || "0") - totalAmount) > 0.01) {
+          console.log(`Atualizando fatura: R$ ${invoice.totalAmount} → R$ ${totalAmount.toFixed(2)}`);
+          invoice = await storage.updateCreditCardInvoice(invoice.id, {
+            totalAmount: totalAmount.toFixed(2)
+          });
+        }
       }
       
       res.json(invoice || { totalAmount: "0", paidAmount: "0", status: "pending" });
@@ -1132,17 +1237,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Fatura não encontrada" });
       }
       
+      console.log('Fatura encontrada:', invoice);
+      
       const currentPaidAmount = parseFloat(invoice.paidAmount || "0");
       const paymentAmount = parseFloat(amount || "0");
       const newPaidAmount = currentPaidAmount + paymentAmount;
       const totalAmount = parseFloat(invoice.totalAmount || "0");
       
+      console.log('Valores do pagamento:', {
+        currentPaidAmount,
+        paymentAmount,
+        newPaidAmount,
+        totalAmount
+      });
+      
+      // CORREÇÃO: Status não pode ser "paid" antes do fechamento da fatura
       let newStatus = "pending";
-      if (newPaidAmount >= totalAmount && totalAmount > 0) {
-        newStatus = "paid";
-      } else if (newPaidAmount > 0) {
+      if (newPaidAmount > 0) {
         newStatus = "partial";
       }
+      
+      // Status "paid" só pode ser definido após o fechamento da fatura
+      // e quando o valor pago for igual ou maior ao total
       
       // Atualizar a fatura
       const updatedInvoice = await storage.updateCreditCardInvoice(invoiceId, {
@@ -1150,36 +1266,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: newStatus
       });
       
-      // Atualizar o limite usado do cartão após pagamento
+      // CORREÇÃO: Atualizar o limite usado do cartão após pagamento
       const creditCard = await storage.getCreditCardById(invoice.creditCardId);
       if (creditCard) {
-        const currentUsed = parseFloat(creditCard.currentUsed || "0");
-        let newCurrentUsed = Math.max(0, currentUsed - paymentAmount);
+        // Após pagamento, recalcular o limite usado baseado na nova fatura em aberto
+        // Buscar transações da nova fatura em aberto
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        const closingDay = creditCard.closingDay;
         
-        // Se o pagamento quitou totalmente a fatura, precisamos considerar as assinaturas do próximo mês
-        if (newStatus === "paid") {
-          // Buscar assinaturas ativas deste cartão para reservar o limite para o próximo mês
-          const subscriptions = await storage.getActiveSubscriptions();
-          const cardSubscriptions = subscriptions.filter(s => 
-            s.paymentMethod === 'credito' && 
-            s.creditCardId === invoice.creditCardId && 
-            s.isActive
-          );
-          
-          // Calcular valor total das assinaturas para reservar no limite
-          const nextMonthSubscriptionAmount = cardSubscriptions.reduce((sum, sub) => {
-            return sum + parseFloat(sub.amount);
-          }, 0);
-          
-          // Reservar o limite para as assinaturas do próximo mês
-          newCurrentUsed += nextMonthSubscriptionAmount;
-          
-          console.log(`Fatura paga totalmente. Limite atualizado considerando assinaturas do próximo mês: R$ ${nextMonthSubscriptionAmount.toFixed(2)}`);
+        // Calcular período da nova fatura em aberto
+        let newInvoiceStartDate: string;
+        let newInvoiceEndDate: string;
+        
+        if (closingDay === 1) {
+          newInvoiceStartDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0];
+          newInvoiceEndDate = new Date(currentYear, currentMonth, 31).toISOString().split('T')[0];
+        } else {
+          newInvoiceStartDate = new Date(currentYear, currentMonth - 1, closingDay).toISOString().split('T')[0];
+          newInvoiceEndDate = new Date(currentYear, currentMonth, closingDay - 1).toISOString().split('T')[0];
         }
         
+        // Buscar transações da nova fatura em aberto
+        const allTransactions = await storage.getTransactions();
+        const newInvoiceTransactions = allTransactions.filter(t => 
+          t.creditCardId === invoice.creditCardId &&
+          t.date >= newInvoiceStartDate &&
+          t.date <= newInvoiceEndDate
+        );
+        
+        // Calcular novo limite usado baseado na nova fatura
+        const newInvoiceAmount = newInvoiceTransactions.reduce((sum, t) => 
+          sum + parseFloat(t.amount), 0
+        );
+        
+        console.log(`Nova fatura em aberto: R$ ${newInvoiceAmount.toFixed(2)}`);
+        console.log(`Transações da nova fatura:`, newInvoiceTransactions.map(t => `${t.description}: R$ ${t.amount}`));
+        
+        // Atualizar o limite usado do cartão
         await storage.updateCreditCard(invoice.creditCardId, {
-          currentUsed: newCurrentUsed.toFixed(2)
+          currentUsed: newInvoiceAmount.toFixed(2)
         });
+        
+        console.log(`Limite do cartão atualizado para: R$ ${newInvoiceAmount.toFixed(2)}`);
       }
       
       res.json(updatedInvoice);

@@ -4,7 +4,6 @@ import FinancialSummary from "@/components/financial-summary";
 import IncomeForm from "@/components/income-form";
 import ExpenseForm from "@/components/expense-form";
 import TransactionHistory from "@/components/transaction-history";
-import HistoryFilters from "@/components/history-filters";
 import Charts from "@/components/charts";
 import MonthSelector from "@/components/month-selector";
 import SettingsManager from "@/components/settings-manager";
@@ -171,6 +170,8 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
             <Charts
               summary={summary}
               categories={categories || []}
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
             />
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">
@@ -188,17 +189,18 @@ export default function Dashboard({ userData, onLogout, onUpdateProfile }: Dashb
         )}
 
         {activeTab === "income" && (
-          <IncomeForm categories={categories.filter(c => c.type === 'income')} />
+          <IncomeForm
+            categories={categories.filter(c => c.type === 'income')}
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+          />
         )}
 
         {activeTab === "expenses" && (
-          <ExpenseForm categories={categories.filter(c => c.type === 'expense')} />
-        )}
-
-        {activeTab === "history" && (
-          <HistoryFilters
-            transactions={transactions}
-            categories={categories}
+          <ExpenseForm
+            categories={categories.filter(c => c.type === 'expense')}
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
           />
         )}
 

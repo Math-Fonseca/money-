@@ -1,74 +1,22 @@
-import express, { type Request, Response, NextFunction } from "express";
+import express from "express";
 import { registerRoutes } from "./routes";
-import { registerMVCRoutes } from "./routes-mvc";
-import { ErrorHandlingMiddleware } from "./middleware/ErrorHandlingMiddleware";
-import { setupVite, serveStatic, log } from "./vite";
+import { createServer } from "http";
 
 const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware para parsing JSON
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+// Middleware para parsing de formulários
+app.use(express.urlencoded({ extended: true }));
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
+// Registrar rotas da API
+registerRoutes(app);
 
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
+const server = createServer(app);
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🔌 API endpoints available at http://localhost:${PORT}/api/*`);
 });
-
-(async () => {
-  // Register MVC routes (new architecture)
-  const server = await registerMVCRoutes(app);
-
-  // Add error handling middleware
-  app.use(ErrorHandlingMiddleware.notFound);
-  app.use(ErrorHandlingMiddleware.handle);
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  // if (app.get("env") === "development") {
-  if (true) {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  server.listen(
-    {
-      port,
-      // host: "localhost",
-      // reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    }
-  );
-})();

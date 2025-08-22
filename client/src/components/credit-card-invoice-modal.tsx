@@ -71,20 +71,60 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     const year = date.getFullYear();
     const month = date.getMonth();
     const closingDay = creditCard?.closingDay || 1;
-    
-    const startDate = new Date(year, month - 1, closingDay + 1);
-    const endDate = new Date(year, month, closingDay);
-    
+
+    // CORREÇÃO: A fatura inclui transações desde o dia de fechamento anterior + 1
+    // até o dia de fechamento atual
+    let startDate: Date;
+    let endDate: Date;
+
+    if (closingDay === 1) {
+      // Caso especial: se fecha no dia 1, a fatura é do mês anterior
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month - 1, 31);
+    } else {
+      // Caso normal: fatura vai do fechamento anterior + 1 até o fechamento atual
+      // Exemplo: se fecha no dia 5, a fatura vai do dia 6 do mês anterior até o dia 5 do mês atual
+      startDate = new Date(year, month - 1, closingDay + 1);
+      endDate = new Date(year, month, closingDay);
+    }
+
+    // Debug: verificar se as datas estão corretas
+    console.log(`Período calculado para ${creditCard?.name}:`, {
+      startDate: format(startDate, 'dd/MM/yyyy'),
+      endDate: format(endDate, 'dd/MM/yyyy'),
+      closingDay,
+      currentMonth: month + 1,
+      currentYear: year
+    });
+
     return { startDate, endDate };
   };
 
   const { startDate, endDate } = creditCard ? getInvoicePeriod(currentDate) : { startDate: new Date(), endDate: new Date() };
+
+  // Debug: mostrar período da fatura
+  console.log(`Período da fatura para ${creditCard?.name}:`, {
+    startDate: format(startDate, 'dd/MM/yyyy'),
+    endDate: format(endDate, 'dd/MM/yyyy'),
+    currentDate: format(currentDate, 'dd/MM/yyyy'),
+    closingDay: creditCard?.closingDay
+  });
+
+  // Debug: verificar se as datas estão corretas
+  console.log(`Exemplo para Cartão Principal (fecha dia 5):`);
+  console.log(`- Se estamos em agosto/2025, a fatura deve incluir:`);
+  console.log(`  - Transações de 06/07/2025 até 05/08/2025`);
+  console.log(`- Se estamos em setembro/2025, a fatura deve incluir:`);
+  console.log(`  - Transações de 06/08/2025 até 05/09/2025`);
 
   // Fetch transactions for current invoice period - CORRIGIDO URL
   const { data: transactions = [] } = useQuery({
     queryKey: [`/api/transactions/credit-card/${creditCard?.id}/${format(startDate, 'yyyy-MM-dd')}/${format(endDate, 'yyyy-MM-dd')}`],
     enabled: !!creditCard && isOpen,
   });
+
+  // Debug: mostrar transações recebidas
+  console.log(`Transações recebidas para ${creditCard?.name}:`, transactions);
 
   // Fetch subscriptions for current invoice period - CORRIGIDO URL
   const { data: subscriptions = [] } = useQuery({
@@ -98,19 +138,14 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     enabled: !!creditCard && isOpen,
   });
 
-  // Filter transactions for this credit card and period
-  const creditCardTransactions = Array.isArray(transactions) ? transactions.filter((t: Transaction) => 
-    t.creditCardId === creditCard?.id &&
-    t.type === 'expense' &&
-    new Date(t.date) >= startDate &&
-    new Date(t.date) <= endDate
-  ) : [];
+  // As transações já vêm filtradas do backend para o período correto
+  const creditCardTransactions = Array.isArray(transactions) ? transactions : [];
 
   // ⚡️ USAR DIRETAMENTE AS ASSINATURAS DO BACKEND - JÁ FILTRADAS
   const creditCardSubscriptions = Array.isArray(subscriptions) ? subscriptions : [];
 
   // ⚡️ TOTAL APENAS DAS TRANSAÇÕES - ASSINATURAS JÁ VÊM INCLUÍDAS
-  const totalInvoiceAmount = creditCardTransactions.reduce((sum: number, t: Transaction) => 
+  const totalInvoiceAmount = creditCardTransactions.reduce((sum: number, t: Transaction) =>
     sum + parseFloat(t.amount), 0
   );
 
@@ -120,9 +155,9 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     const closingDate = new Date(endDate);
     const dueDate = new Date(closingDate);
     dueDate.setDate(creditCard?.dueDay || 10);
-    
+
     const paidAmount = invoice?.paidAmount ? parseFloat(invoice.paidAmount) : 0;
-    
+
     if (paidAmount >= totalInvoiceAmount && totalInvoiceAmount > 0) {
       return { status: "PAGO", color: "text-green-600" };
     } else if (paidAmount > 0 && paidAmount < totalInvoiceAmount) {
@@ -163,9 +198,9 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
 
   const handlePayment = () => {
     if (!invoice || !paymentAmount) return;
-    
+
     const amount = parseFloat(paymentAmount);
-    
+
     if (amount <= 0) {
       toast({
         title: "Erro",
@@ -185,19 +220,19 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     const today = new Date();
     // Criar data de fechamento baseada no dia de fechamento do cartão
     const closingDate = new Date(invoiceEndDate);
-    
+
     // Criar data de vencimento (dia do vencimento no mês seguinte ao fechamento)
     const dueDate = new Date(invoiceEndDate);
     dueDate.setMonth(invoiceEndDate.getMonth() + 1);
     dueDate.setDate(creditCard!.dueDay);
-    
+
     const isAfterClosingDate = today > closingDate;
     const isAfterDueDate = today > dueDate;
-    
+
     // Determinar status baseado na lógica de negócio CORRIGIDA
     let finalStatus = status;
     let label = "Pendente";
-    
+
     if (paidAmount >= totalAmount && totalAmount > 0) {
       finalStatus = "paid";
       label = "Paga";
@@ -211,7 +246,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
       finalStatus = "closed";
       label = "Sem movimentação";
     }
-    
+
     const statusConfig = {
       pending: { label: "Pendente", variant: "secondary" as const, icon: ClockIcon },
       paid: { label: "Paga", variant: "default" as const, icon: CheckCircleIcon },
@@ -219,10 +254,10 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
       partial: { label: "Parcial", variant: "outline" as const, icon: DollarSignIcon },
       overdue: { label: "Vencida", variant: "destructive" as const, icon: XCircleIcon },
     };
-    
+
     const config = statusConfig[finalStatus as keyof typeof statusConfig] || { label, variant: "secondary" as const, icon: ClockIcon };
     const IconComponent = config.icon;
-    
+
     return (
       <Badge variant={config.variant} className="flex items-center gap-1">
         <IconComponent className="w-3 h-3" />
@@ -278,7 +313,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Resumo da Fatura</span>
-                <Badge 
+                <Badge
                   className={`${invoiceStatus.status === 'VENCIDA' ? 'bg-red-500 text-white border-red-600' : invoiceStatus.status === 'FECHADA' ? 'bg-gray-100 text-gray-600 border-gray-300' : invoiceStatus.status === 'ABERTA' ? 'bg-green-500 text-white border-green-600' : invoiceStatus.color}`}
                 >
                   {invoiceStatus.status}
@@ -314,7 +349,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
               <TabsTrigger value="transactions">Transações</TabsTrigger>
               <TabsTrigger value="payment">Pagamento</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="transactions" className="space-y-4">
               <Card>
                 <CardHeader>
@@ -346,14 +381,14 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                           </p>
                         </div>
                       ))}
-                      
+
                       {/* ⚡️ ASSINATURAS JÁ VÊM COMO TRANSAÇÕES DO BACKEND - NÃO DUPLICAR */}
                     </div>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="payment" className="space-y-4">
               <Card>
                 <CardHeader>
@@ -372,7 +407,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                     />
                   </div>
 
-                  
+
                   <div className="flex gap-2">
                     <Button
                       onClick={() => {
@@ -392,7 +427,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                       Pagamento Mínimo (10%)
                     </Button>
                   </div>
-                  
+
                   {/* Informação sobre pagamento total */}
                   {paymentAmount && parseFloat(paymentAmount) >= (totalInvoiceAmount - (invoice ? parseFloat(invoice.paidAmount) : 0)) && (
                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -401,7 +436,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
                       </p>
                     </div>
                   )}
-                  
+
                   <Button
                     onClick={handlePayment}
                     disabled={!paymentAmount || payInvoiceMutation.isPending}

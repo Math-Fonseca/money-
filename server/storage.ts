@@ -169,10 +169,336 @@ export class MemStorage implements IStorage {
       { name: "Outros", icon: "📱", color: "#84CC16", type: "subscription" },
     ];
 
+    // Criar categorias
     [...incomeCategories, ...expenseCategories, ...subscriptionCategories].forEach(cat => {
       const id = randomUUID();
       this.categories.set(id, { ...cat, id });
     });
+
+    // Criar dados de exemplo para transações
+    this.createSampleTransactions();
+    
+    // Criar dados de exemplo para cartões de crédito
+    this.createSampleCreditCards();
+    
+    // Criar configurações padrão
+    this.createSampleSettings();
+  }
+
+  private createSampleTransactions() {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    // Encontrar IDs das categorias
+    const categories = Array.from(this.categories.values());
+    const salaryCategory = categories.find(c => c.name === "Salário");
+    const foodCategory = categories.find(c => c.name === "Alimentação");
+    const transportCategory = categories.find(c => c.name === "Transporte");
+    const supermarketCategory = categories.find(c => c.name === "Supermercado");
+    const restaurantCategory = categories.find(c => c.name === "Restaurantes");
+    const healthCategory = categories.find(c => c.name === "Saúde");
+    const leisureCategory = categories.find(c => c.name === "Lazer");
+    
+    if (salaryCategory) {
+      // Salário do mês atual
+      const salaryTransaction: InsertTransaction = {
+        description: "Salário Mensal",
+        amount: "3500.00",
+        date: `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-05`,
+        type: "income",
+        categoryId: salaryCategory.id,
+        paymentMethod: "pix",
+        isRecurring: true,
+        installments: null,
+        installmentNumber: null,
+        parentTransactionId: null,
+        isInstallment: null,
+        creditCardId: null,
+      };
+      this.createTransaction(salaryTransaction);
+    }
+    
+    if (foodCategory) {
+      // Despesas de alimentação do mês atual
+      const foodTransactions: InsertTransaction[] = [
+        {
+          description: "Almoço no trabalho",
+          amount: "25.00",
+          date: `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-15`,
+          type: "expense",
+          categoryId: foodCategory.id,
+          paymentMethod: "pix",
+          isRecurring: false,
+          installments: null,
+          installmentNumber: null,
+          parentTransactionId: null,
+          isInstallment: null,
+          creditCardId: null,
+        },
+        {
+          description: "Café da manhã",
+          amount: "8.50",
+          date: `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-20`,
+          type: "expense",
+          categoryId: foodCategory.id,
+          paymentMethod: "pix",
+          isRecurring: false,
+          installments: null,
+          installmentNumber: null,
+          parentTransactionId: null,
+          isInstallment: null,
+          creditCardId: null,
+        }
+      ];
+      
+      foodTransactions.forEach(t => this.createTransaction(t));
+    }
+    
+    if (supermarketCategory) {
+      // Compras no supermercado
+      const supermarketTransaction: InsertTransaction = {
+        description: "Compras do mês",
+        amount: "180.00",
+        date: `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-10`,
+        type: "expense",
+        categoryId: supermarketCategory.id,
+        paymentMethod: "pix",
+        isRecurring: false,
+        installments: null,
+        installmentNumber: null,
+        parentTransactionId: null,
+        isInstallment: null,
+        creditCardId: null,
+      };
+      this.createTransaction(supermarketTransaction);
+    }
+    
+    if (transportCategory) {
+      // Despesas de transporte
+      const transportTransaction: InsertTransaction = {
+        description: "Uber para trabalho",
+        amount: "15.00",
+        date: `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-18`,
+        type: "expense",
+        categoryId: transportCategory.id,
+        paymentMethod: "pix",
+        isRecurring: false,
+        installments: null,
+        installmentNumber: null,
+        parentTransactionId: null,
+        isInstallment: null,
+        creditCardId: null,
+      };
+      this.createTransaction(transportTransaction);
+    }
+    
+    if (restaurantCategory) {
+      // Jantar no restaurante
+      const restaurantTransaction: InsertTransaction = {
+        description: "Jantar com amigos",
+        amount: "45.00",
+        date: `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-22`,
+        type: "expense",
+        categoryId: restaurantCategory.id,
+        paymentMethod: "pix",
+        isRecurring: false,
+        installments: null,
+        installmentNumber: null,
+        parentTransactionId: null,
+        isInstallment: null,
+        creditCardId: null,
+      };
+      this.createTransaction(restaurantTransaction);
+    }
+    
+    if (healthCategory) {
+      // Despesas de saúde
+      const healthTransaction: InsertTransaction = {
+        description: "Consulta médica",
+        amount: "120.00",
+        date: `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-12`,
+        type: "expense",
+        categoryId: healthCategory.id,
+        paymentMethod: "pix",
+        isRecurring: false,
+        installments: null,
+        installmentNumber: null,
+        parentTransactionId: null,
+        isInstallment: null,
+        creditCardId: null,
+      };
+      this.createTransaction(healthTransaction);
+    }
+    
+    if (leisureCategory) {
+      // Despesas de lazer
+      const leisureTransaction: InsertTransaction = {
+        description: "Cinema",
+        amount: "32.00",
+        date: `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-25`,
+        type: "expense",
+        categoryId: leisureCategory.id,
+        paymentMethod: "pix",
+        isRecurring: false,
+        installments: null,
+        installmentNumber: null,
+        parentTransactionId: null,
+        isInstallment: null,
+        creditCardId: null,
+      };
+      this.createTransaction(leisureTransaction);
+    }
+    
+    // Criar algumas transações de meses anteriores para dados históricos
+    this.createHistoricalTransactions();
+  }
+  
+  private createHistoricalTransactions() {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    const categories = Array.from(this.categories.values());
+    const salaryCategory = categories.find(c => c.name === "Salário");
+    const foodCategory = categories.find(c => c.name === "Alimentação");
+    const supermarketCategory = categories.find(c => c.name === "Supermercado");
+    const transportCategory = categories.find(c => c.name === "Transporte");
+    
+    // Criar transações para os últimos 5 meses
+    for (let i = 1; i <= 5; i++) {
+      const targetMonth = currentMonth - i;
+      let month = targetMonth;
+      let year = currentYear;
+      
+      if (month < 0) {
+        month += 12;
+        year -= 1;
+      }
+      
+      const monthStr = (month + 1).toString().padStart(2, '0');
+      
+      if (salaryCategory) {
+        const salaryTransaction: InsertTransaction = {
+          description: "Salário Mensal",
+          amount: "3500.00",
+          date: `${year}-${monthStr}-05`,
+          type: "income",
+          categoryId: salaryCategory.id,
+          paymentMethod: "pix",
+          isRecurring: true,
+          installments: null,
+          installmentNumber: null,
+          parentTransactionId: null,
+          isInstallment: null,
+          creditCardId: null,
+        };
+        this.createTransaction(salaryTransaction);
+      }
+      
+      if (foodCategory) {
+        const foodTransaction: InsertTransaction = {
+          description: "Alimentação do mês",
+          amount: (150 + Math.random() * 100).toFixed(2),
+          date: `${year}-${monthStr}-15`,
+          type: "expense",
+          categoryId: foodCategory.id,
+          paymentMethod: "pix",
+          isRecurring: false,
+          installments: null,
+          installmentNumber: null,
+          parentTransactionId: null,
+          isInstallment: null,
+          creditCardId: null,
+        };
+        this.createTransaction(foodTransaction);
+      }
+      
+      if (supermarketCategory) {
+        const supermarketTransaction: InsertTransaction = {
+          description: "Compras do mês",
+          amount: (200 + Math.random() * 150).toFixed(2),
+          date: `${year}-${monthStr}-10`,
+          type: "expense",
+          categoryId: supermarketCategory.id,
+          paymentMethod: "pix",
+          isRecurring: false,
+          installments: null,
+          installmentNumber: null,
+          parentTransactionId: null,
+          isInstallment: null,
+          creditCardId: null,
+        };
+        this.createTransaction(supermarketTransaction);
+      }
+      
+      if (transportCategory) {
+        const transportTransaction: InsertTransaction = {
+          description: "Transporte do mês",
+          amount: (80 + Math.random() * 120).toFixed(2),
+          date: `${year}-${monthStr}-20`,
+          type: "expense",
+          categoryId: transportCategory.id,
+          paymentMethod: "pix",
+          isRecurring: false,
+          installments: null,
+          installmentNumber: null,
+          parentTransactionId: null,
+          isInstallment: null,
+          creditCardId: null,
+        };
+        this.createTransaction(transportTransaction);
+      }
+    }
+  }
+  
+  private createSampleCreditCards() {
+    // Cartões de crédito de exemplo
+    const sampleCreditCards: InsertCreditCard[] = [
+      {
+        name: "Cartão Principal",
+        brand: "visa",
+        bank: "nubank",
+        limit: "5000.00",
+        color: "#8A05BE",
+        closingDay: 5,
+        dueDay: 15,
+        isBlocked: false,
+      },
+      {
+        name: "Cartão de Compras",
+        brand: "mastercard",
+        bank: "itau",
+        limit: "3000.00",
+        color: "#F37900",
+        closingDay: 10,
+        dueDay: 20,
+        isBlocked: false,
+      },
+      {
+        name: "Cartão de Viagem",
+        brand: "american-express",
+        bank: "santander",
+        limit: "8000.00",
+        color: "#EC0000",
+        closingDay: 15,
+        dueDay: 25,
+        isBlocked: false,
+      }
+    ];
+    
+    sampleCreditCards.forEach(card => this.createCreditCard(card));
+  }
+
+  private createSampleSettings() {
+    // Configurações padrão
+    const defaultSettings: InsertSetting[] = [
+      { key: "salary", value: "3500.00" },
+      { key: "dailyVT", value: "8.00" },
+      { key: "dailyVR", value: "15.00" },
+    ];
+    
+    defaultSettings.forEach(setting => this.createOrUpdateSetting(setting));
   }
 
   // Categories
