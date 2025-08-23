@@ -1,0 +1,24 @@
+warning: in the working copy of 'client/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/components/charts.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/components/credit-card-expenses.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/components/credit-card-invoice-modal.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/components/credit-card-manager.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/components/expense-form.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/components/history-filters.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/components/subscription-manager.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'client/src/components/transaction-history.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/routes.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server/storage.ts', LF will be replaced by CRLF the next time Git touches it
+ client/index.html                                  |   1 [32m+[m
+ client/src/components/charts.tsx                   |  68 [32m+++[m[31m-[m
+ client/src/components/credit-card-expenses.tsx     |  33 [32m+[m[31m-[m
+ .../src/components/credit-card-invoice-modal.tsx   | 101 [32m++++[m[31m--[m
+ client/src/components/credit-card-manager.tsx      |   8 [32m+[m[31m-[m
+ client/src/components/expense-form.tsx             |   4 [32m+[m[31m-[m
+ client/src/components/history-filters.tsx          |  58 [32m+[m[31m--[m
+ client/src/components/subscription-manager.tsx     |  84 [32m+++[m[31m--[m
+ client/src/components/transaction-history.tsx      |  36 [32m+[m[31m-[m
+ replit.md                                          | 180 [31m----------[m
+ server/routes.ts                                   | 236 [32m+++++++++[m[31m---[m
+ server/storage.ts                                  | 397 [32m+++[m[31m------------------[m
+ 12 files changed, 493 insertions(+), 713 deletions(-)

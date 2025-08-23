@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -40,37 +40,37 @@ type SubscriptionFormData = z.infer<typeof subscriptionFormSchema>;
 // Função para obter informações da bandeira do cartão
 const getBrandInfo = (brand: string) => {
   const brands: { [key: string]: { name: string; icon: string; color: string } } = {
-    'mastercard': { 
-      name: 'MasterCard', 
-      icon: '💳', 
-      color: '#EB001B' 
+    'mastercard': {
+      name: 'MasterCard',
+      icon: '💳',
+      color: '#EB001B'
     },
-    'visa': { 
-      name: 'Visa', 
-      icon: '💳', 
-      color: '#1A1F71' 
+    'visa': {
+      name: 'Visa',
+      icon: '💳',
+      color: '#1A1F71'
     },
-    'elo': { 
-      name: 'Elo', 
-      icon: '💳', 
-      color: '#FFC700' 
+    'elo': {
+      name: 'Elo',
+      icon: '💳',
+      color: '#FFC700'
     },
-    'american-express': { 
-      name: 'American Express', 
-      icon: '💳', 
-      color: '#006FCF' 
+    'american-express': {
+      name: 'American Express',
+      icon: '💳',
+      color: '#006FCF'
     },
-    'hipercard': { 
-      name: 'Hipercard', 
-      icon: '💳', 
-      color: '#E30613' 
+    'hipercard': {
+      name: 'Hipercard',
+      icon: '💳',
+      color: '#E30613'
     }
   };
-  
-  return brands[brand] || { 
-    name: brand, 
-    icon: '💳', 
-    color: '#6B7280' 
+
+  return brands[brand] || {
+    name: brand,
+    icon: '💳',
+    color: '#6B7280'
   };
 };
 
@@ -172,7 +172,7 @@ export default function SubscriptionManager() {
         amount: parseFloat(data.amount.replace(/[^\d,.-]/g, '').replace(',', '.')).toString(),
         categoryId: data.categoryId === "none" ? null : data.categoryId,
       };
-      
+
       if (editingSubscription) {
         return apiRequest(`/api/subscriptions/${editingSubscription.id}`, "PUT", formattedData);
       } else {
@@ -202,7 +202,7 @@ export default function SubscriptionManager() {
   });
 
   const toggleSubscriptionMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => 
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       apiRequest(`/api/subscriptions/${id}`, "PUT", { isActive }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
@@ -309,11 +309,11 @@ export default function SubscriptionManager() {
   const getNextBillingDate = (billingDate: number) => {
     const now = new Date();
     const nextBilling = new Date(now.getFullYear(), now.getMonth(), billingDate);
-    
+
     if (nextBilling < now) {
       nextBilling.setMonth(nextBilling.getMonth() + 1);
     }
-    
+
     return nextBilling.toLocaleDateString('pt-BR');
   };
 
@@ -340,8 +340,14 @@ export default function SubscriptionManager() {
               <DialogTitle>
                 {editingSubscription ? "Editar Assinatura" : "Cadastrar Assinatura"}
               </DialogTitle>
+              <DialogDescription>
+                {editingSubscription
+                  ? "Edite as informações da sua assinatura"
+                  : "Preencha as informações para cadastrar uma nova assinatura"
+                }
+              </DialogDescription>
             </DialogHeader>
-            
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
@@ -394,8 +400,8 @@ export default function SubscriptionManager() {
                       <FormItem>
                         <FormLabel>Valor Mensal</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="R$ 19,90" 
+                          <Input
+                            placeholder="R$ 19,90"
                             {...field}
                           />
                         </FormControl>
@@ -411,10 +417,10 @@ export default function SubscriptionManager() {
                       <FormItem>
                         <FormLabel>Dia da Cobrança</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min="1" 
-                            max="31" 
+                          <Input
+                            type="number"
+                            min="1"
+                            max="31"
                             placeholder="15"
                             {...field}
                           />
@@ -590,7 +596,7 @@ export default function SubscriptionManager() {
 
                   return (
                     <Card key={subscription.id} className="relative overflow-hidden">
-                      <div 
+                      <div
                         className="absolute top-0 left-0 w-full h-1"
                         style={{ backgroundColor: serviceInfo.color }}
                       />
@@ -637,7 +643,7 @@ export default function SubscriptionManager() {
                               {formatCurrency(subscription.amount)}
                             </span>
                           </div>
-                          
+
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-600">Próxima cobrança</span>
                             <span className="text-sm font-medium">

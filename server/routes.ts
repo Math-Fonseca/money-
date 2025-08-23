@@ -377,17 +377,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Transação excluída: ${transaction.description} - R$ ${transaction.amount}`);
           console.log(`Limite do cartão atualizado: R$ ${currentUsed} → R$ ${newCurrentUsed}`);
           
-                await storage.updateCreditCard(transaction.creditCardId, {
-        currentUsed: newCurrentUsed.toFixed(2)
-      });
-    }
-  }
-  
-        // CORREÇÃO: Invalidação de cache para forçar atualização das faturas
-      console.log(`Transação excluída com sucesso. Cache das faturas será invalidado.`);
-      
-      // Forçar atualização das faturas invalidando o cache
-      // Isso garante que as faturas sejam recalculadas com as transações atualizadas
+          await storage.updateCreditCard(transaction.creditCardId, {
+            currentUsed: newCurrentUsed.toFixed(2)
+          });
+          
+          // CORREÇÃO: RECALCULAR EFETIVAMENTE A FATURA APÓS EXCLUSÃO
+          console.log(`Transação de cartão excluída: ${transaction.description} - R$ ${transaction.amount}`);
+          console.log(`Recalculando faturas do cartão ${transaction.creditCardId}...`);
+          
+          // Buscar todas as faturas do cartão para recalcular
+          const cardInvoices = await storage.getCreditCardInvoicesByCard(transaction.creditCardId);
+          
+          for (const cardInvoice of cardInvoices) {
+            // Buscar o cartão para obter o dia de fechamento
+            const cardForInvoice = await storage.getCreditCardById(transaction.creditCardId);
+            if (!cardForInvoice) continue;
+            
+            const closingDay = cardForInvoice.closingDay;
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            
+            // Calcular período da fatura
+            let invoiceStartDate: string;
+            let invoiceEndDate: string;
+            
+            if (closingDay === 1) {
+              invoiceStartDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0];
+              invoiceEndDate = new Date(currentYear, currentMonth, 31).toISOString().split('T')[0];
+            } else {
+              invoiceStartDate = new Date(currentYear, currentMonth - 1, closingDay).toISOString().split('T')[0];
+              invoiceEndDate = new Date(currentYear, currentMonth, closingDay - 1).toISOString().split('T')[0];
+            }
+            
+            // Buscar transações ATUAIS do período da fatura
+            const allTransactions = await storage.getTransactions();
+            const invoiceTransactions = allTransactions.filter(t => 
+              t.creditCardId === transaction.creditCardId &&
+              t.date >= invoiceStartDate &&
+              t.date <= invoiceEndDate
+            );
+            
+            // Calcular novo valor total da fatura
+            const newTotalAmount = invoiceTransactions.reduce((sum, t) => 
+              sum + parseFloat(t.amount), 0
+            );
+            
+            // CORREÇÃO: Recalcular valor pago como se a transação nunca existiu
+            const currentInvoice = await storage.getCreditCardInvoiceById(cardInvoice.id);
+            if (currentInvoice) {
+              const currentPaidAmount = parseFloat(currentInvoice.paidAmount || "0");
+              
+              // CORREÇÃO DEFINITIVA: Se excluí transação, ZERAR PAGAMENTO (como se nunca existiu)
+              const originalTotalAmount = parseFloat(currentInvoice.totalAmount || "0");
+              const transactionAmountDeleted = originalTotalAmount - newTotalAmount;
+              let newPaidAmount = currentPaidAmount;
+              
+              if (newTotalAmount === 0) {
+                // Se não há mais transações, ZERAR TUDO
+                newPaidAmount = 0;
+                console.log(`🔥 TODAS transações excluídas - zerando pagamento`);
+              } else if (transactionAmountDeleted > 0) {
+                // LÓGICA NOVA: Se excluí transação, reduzir o valor pago proporcionalmente
+                // Exemplo: Total R$ 100, Pago R$ 100, Excluí R$ 50 → Total R$ 50, Pago R$ 0
+                const paymentPercentage = currentPaidAmount / originalTotalAmount;
+                newPaidAmount = newTotalAmount * paymentPercentage;
+                
+                // CORREÇÃO: Se o usuário quer que seja ZERADO quando excluir, fazer isso:
+                newPaidAmount = 0; // ZERAR PAGAMENTO QUANDO EXCLUIR QUALQUER TRANSAÇÃO
+                
+                console.log(`🔥 Transação excluída (R$ ${transactionAmountDeleted.toFixed(2)}) - ZERANDO pagamento`);
+                console.log(`   - Total original: R$ ${originalTotalAmount.toFixed(2)}`);
+                console.log(`   - Total novo: R$ ${newTotalAmount.toFixed(2)}`);
+                console.log(`   - Pago original: R$ ${currentPaidAmount.toFixed(2)}`);
+                console.log(`   - Pago novo: R$ ${newPaidAmount.toFixed(2)} (ZERADO)`);
+              } else {
+                // Se não excluí nada, manter valor pago
+                newPaidAmount = currentPaidAmount;
+                console.log(`✅ Nenhuma transação excluída - mantendo pagamento R$ ${newPaidAmount.toFixed(2)}`);
+              }
+              
+              // Atualizar a fatura com o novo valor total e valor pago ajustado
+              await storage.updateCreditCardInvoice(cardInvoice.id, {
+                totalAmount: newTotalAmount.toFixed(2),
+                paidAmount: newPaidAmount.toFixed(2)
+              });
+              
+              console.log(`✅ Fatura ${cardInvoice.id} recalculada após exclusão:`);
+              console.log(`   - Total anterior: R$ ${currentInvoice.totalAmount}`);
+              console.log(`   - Total novo: R$ ${newTotalAmount.toFixed(2)}`);
+              console.log(`   - Pago anterior: R$ ${currentPaidAmount}`);
+              console.log(`   - Pago novo: R$ ${newPaidAmount.toFixed(2)}`);
+              console.log(`   - Transações restantes: ${invoiceTransactions.length}`);
+            }
+          }
+        }
+      }
       
       res.status(204).send();
     } catch (error) {
@@ -684,7 +769,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Depois, buscar transações de cartão de crédito que devem aparecer NESTE mês baseado no ciclo de faturamento
       for (const card of creditCards) {
-        const cardTransactions = await storage.getTransactions();
+        // ⚠️ CORREÇÃO: Usar apenas transações do mês específico, não todas as transações
+        const cardTransactions = transactions.filter(t => t.creditCardId === card.id);
         
         // Para cada transação de cartão, verificar se ela deve ser contabilizada neste mês
         const relevantCardTransactions = cardTransactions.filter(t => {
@@ -881,6 +967,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ⚠️ ENDPOINT DE EMERGÊNCIA: Limpar todas as transações
+  app.delete("/api/transactions/clear-all", async (req, res) => {
+    try {
+      await storage.clearAllTransactions();
+      res.json({ message: "Todas as transações foram removidas com sucesso" });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao limpar transações" });
+    }
+  });
+
   // Settings
   app.get("/api/settings", async (req, res) => {
     try {
@@ -966,16 +1062,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const totalAmount = cardTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0) +
                                  cardSubscriptions.reduce((sum, s) => sum + parseFloat(s.amount), 0);
                 
-                // Criar fatura fechada automaticamente
-                if (totalAmount > 0) {
-                  await storage.createCreditCardInvoice({
-                    creditCardId: card.id,
-                    dueDate: new Date(year, month + 1, card.dueDay).toISOString().split('T')[0],
-                    totalAmount: totalAmount.toString(),
-                    paidAmount: "0",
-                    status: "closed", // ⚡️ STATUS FECHADO AUTOMATICAMENTE
-                  });
-                }
+                        // CORREÇÃO: Criar fatura fechada automaticamente - SEMPRE com valores corretos
+        if (totalAmount > 0) {
+          await storage.createCreditCardInvoice({
+            creditCardId: card.id,
+            dueDate: new Date(year, month + 1, card.dueDay).toISOString().split('T')[0],
+            totalAmount: totalAmount.toString(),
+            paidAmount: "0", // SEMPRE ZERO
+            status: "closed", // ⚡️ STATUS FECHADO AUTOMATICAMENTE
+          });
+          console.log(`🔥 Fatura automática criada: Total R$ ${totalAmount.toFixed(2)}, Pago R$ 0.00`);
+        }
               } else if (existingInvoice.status === 'pending') {
                 // Atualizar fatura pendente para fechada
                 await storage.updateCreditCardInvoice(existingInvoice.id, {
@@ -1049,16 +1146,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Buscar transações do cartão no período específico
       const transactions = await storage.getTransactions();
-      console.log(`Total de transações no sistema: ${transactions.length}`);
-      console.log(`Buscando transações para cartão ${cardId} de ${startDate} até ${endDate}`);
+      console.log(`🔍 Total de transações no sistema: ${transactions.length}`);
+      console.log(`🔍 Buscando transações para cartão ${cardId} de ${startDate} até ${endDate}`);
+      
+      // Debug: mostrar todas as transações do cartão
+      const allCardTransactions = transactions.filter(t => t.creditCardId === cardId);
+      console.log(`🔍 Todas as transações do cartão ${cardId}:`, allCardTransactions.map(t => `${t.description}: R$ ${t.amount} em ${t.date}`));
       
       const cardTransactions = transactions.filter(t => {
         // Debug: verificar cada transação
         const isCardMatch = t.creditCardId === cardId;
         const isDateInRange = t.date >= startDate && t.date <= endDate;
         
+        console.log(`🔍 Transação ${t.description}: cartão=${isCardMatch}, período=${isDateInRange} (${t.date} >= ${startDate} && ${t.date} <= ${endDate})`);
+        
         if (isCardMatch && !isDateInRange) {
-          console.log(`Transação ${t.description} (${t.date}) não está no período ${startDate} - ${endDate}`);
+          console.log(`❌ Transação ${t.description} (${t.date}) não está no período ${startDate} - ${endDate}`);
         }
         
         return isCardMatch && isDateInRange;
@@ -1149,14 +1252,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let invoice = await storage.getCreditCardInvoiceByCardAndDate?.(cardId, dueDate);
       
       if (!invoice) {
-        // Criar nova fatura se não existir
+        // CORREÇÃO: Criar nova fatura se não existir - SEMPRE com valores zerados
         invoice = await storage.createCreditCardInvoice?.({
           creditCardId: cardId,
           dueDate: dueDate,
           totalAmount: "0",
-          paidAmount: "0",
+          paidAmount: "0", // SEMPRE ZERO
           status: "pending"
         });
+        console.log('🔥 Nova fatura criada com valores zerados:', invoice);
         console.log('Nova fatura criada:', invoice);
       } else {
         console.log('Fatura existente encontrada:', invoice);
@@ -1208,16 +1312,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`- ${t.description}: R$ ${t.amount} em ${t.date}`);
         });
         
-        // Atualizar a fatura com o valor total recalculado
-        if (invoice && Math.abs(parseFloat(invoice.totalAmount || "0") - totalAmount) > 0.01) {
-          console.log(`Atualizando fatura: R$ ${invoice.totalAmount} → R$ ${totalAmount.toFixed(2)}`);
-          invoice = await storage.updateCreditCardInvoice(invoice.id, {
-            totalAmount: totalAmount.toFixed(2)
-          });
+        // CORREÇÃO: Atualizar a fatura com o valor total recalculado E ZERAR pagamento se não há transações
+        if (invoice) {
+          const needsUpdate = Math.abs(parseFloat(invoice.totalAmount || "0") - totalAmount) > 0.01;
+          const needsPaymentReset = totalAmount === 0 && parseFloat(invoice.paidAmount || "0") > 0;
+          
+          if (needsUpdate || needsPaymentReset) {
+            console.log(`Atualizando fatura: Total R$ ${invoice.totalAmount} → R$ ${totalAmount.toFixed(2)}`);
+            
+            const updateData: any = {
+              totalAmount: totalAmount.toFixed(2)
+            };
+            
+            // CORREÇÃO: Se não há transações, ZERAR pagamento
+            if (totalAmount === 0) {
+              updateData.paidAmount = "0";
+              console.log(`🔥 Nenhuma transação - zerando pagamento: R$ ${invoice.paidAmount} → R$ 0.00`);
+            }
+            
+            invoice = await storage.updateCreditCardInvoice(invoice.id, updateData);
+          }
         }
       }
       
-      res.json(invoice || { totalAmount: "0", paidAmount: "0", status: "pending" });
+      // CORREÇÃO: Garantir que a resposta sempre tenha valores corretos
+      const responseInvoice = invoice || { totalAmount: "0", paidAmount: "0", status: "pending" };
+      
+      // CORREÇÃO: Se não há transações, forçar valores zerados
+      if (parseFloat(responseInvoice.totalAmount || "0") === 0) {
+        responseInvoice.paidAmount = "0";
+        console.log(`🔥 Resposta corrigida: Total R$ 0, Pago R$ 0`);
+      }
+      
+      res.json(responseInvoice);
     } catch (error) {
       console.error("Erro ao buscar fatura do cartão:", error);
       res.status(500).json({ error: "Erro interno do servidor" });
@@ -1251,14 +1378,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalAmount
       });
       
-      // CORREÇÃO: Status não pode ser "paid" antes do fechamento da fatura
-      let newStatus = "pending";
-      if (newPaidAmount > 0) {
-        newStatus = "partial";
+      // CORREÇÃO: Lógica de status baseada no período de fechamento
+      // Buscar o cartão primeiro para obter o dia de fechamento
+      const creditCard = await storage.getCreditCardById(invoice.creditCardId);
+      if (!creditCard) {
+        return res.status(404).json({ error: "Cartão de crédito não encontrado" });
       }
       
-      // Status "paid" só pode ser definido após o fechamento da fatura
-      // e quando o valor pago for igual ou maior ao total
+      // Calcular se a fatura está fechada
+      const today = new Date();
+      const closingDay = creditCard.closingDay;
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+      
+      // Calcular data de fechamento da fatura atual
+      let invoiceClosingDate: Date;
+      if (closingDay === 1) {
+        invoiceClosingDate = new Date(currentYear, currentMonth, 1);
+      } else {
+        invoiceClosingDate = new Date(currentYear, currentMonth, closingDay);
+      }
+      
+      // LÓGICA CORRIGIDA: Status baseado no período de fechamento
+      let newStatus = "pending";
+      const isInvoiceClosed = today > invoiceClosingDate;
+      
+      if (!isInvoiceClosed) {
+        // Fatura ainda em aberto - status sempre "pending"
+        newStatus = "pending";
+      } else {
+        // Fatura já fechada - pode ter status baseado no pagamento
+        if (newPaidAmount >= totalAmount && totalAmount > 0) {
+          newStatus = "paid";
+        } else if (newPaidAmount > 0) {
+          newStatus = "partial";
+        }
+      }
+      
+      console.log(`Status calculado: ${newStatus} (Pago: R$ ${newPaidAmount}, Total: R$ ${totalAmount}, Fechada: ${isInvoiceClosed})`);
       
       // Atualizar a fatura
       const updatedInvoice = await storage.updateCreditCardInvoice(invoiceId, {
@@ -1267,7 +1424,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // CORREÇÃO: Atualizar o limite usado do cartão após pagamento
-      const creditCard = await storage.getCreditCardById(invoice.creditCardId);
       if (creditCard) {
         // Após pagamento, recalcular o limite usado baseado na nova fatura em aberto
         // Buscar transações da nova fatura em aberto

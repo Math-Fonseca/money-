@@ -54,6 +54,7 @@ export default function Charts({ summary, categories, selectedMonth, selectedYea
       }
     } catch (error) {
       console.error('Error during chart cleanup:', error);
+      // Não fazer nada se houver erro na limpeza
     }
   };
 
@@ -83,8 +84,8 @@ export default function Charts({ summary, categories, selectedMonth, selectedYea
     return false;
   };
 
-  // Função para gerar dados históricos de 6 ou 12 meses
-  const generateHistoricalData = (monthsCount: number = 6) => {
+  // Função para buscar dados históricos reais de 6 ou 12 meses
+  const generateHistoricalData = async (monthsCount: number = 6) => {
     const months = [];
     const incomeData = [];
     const expenseData = [];
@@ -107,28 +108,48 @@ export default function Charts({ summary, categories, selectedMonth, selectedYea
       const yearAbbr = year.toString().slice(-2); // Pega apenas os últimos 2 dígitos do ano
       months.push(`${monthAbbr}/${yearAbbr}`);
 
-      // Se for o mês selecionado, usar os dados reais
+      console.log(`Processing month ${i}: ${monthAbbr}/${yearAbbr} (month: ${month + 1}, year: ${year})`);
+
+      // Se for o mês selecionado, usar os dados reais do summary
       if (i === 0 && summary) {
-        incomeData.push(summary.totalIncome || 0);
-        expenseData.push(summary.totalExpenses || 0);
+        const income = summary.totalIncome || 0;
+        const expense = summary.totalExpenses || 0;
+        incomeData.push(income);
+        expenseData.push(expense);
+        console.log(`Current month (${monthAbbr}/${yearAbbr}): Income=${income}, Expense=${expense}`);
       } else {
-        // Para meses anteriores, gerar dados simulados baseados nos dados atuais
-        if (summary) {
-          const baseIncome = summary.totalIncome || 0;
-          const baseExpense = summary.totalExpenses || 0;
-
-          // Variação de ±30% para simular dados históricos
-          const incomeVariation = 0.7 + Math.random() * 0.6;
-          const expenseVariation = 0.7 + Math.random() * 0.6;
-
-          incomeData.push(Math.round(baseIncome * incomeVariation * 100) / 100);
-          expenseData.push(Math.round(baseExpense * expenseVariation * 100) / 100);
-        } else {
+        // Para meses anteriores, buscar dados reais da API
+        try {
+          const response = await fetch(`/api/financial-summary?month=${month + 1}&year=${year}`);
+          if (response.ok) {
+            const monthData = await response.json();
+            const income = monthData.totalIncome || 0;
+            const expense = monthData.totalExpenses || 0;
+            incomeData.push(income);
+            expenseData.push(expense);
+            console.log(`Historical month (${monthAbbr}/${yearAbbr}): Income=${income}, Expense=${expense}`);
+          } else {
+            // Se não conseguir buscar, usar 0 (sem dados)
+            incomeData.push(0);
+            expenseData.push(0);
+            console.log(`Historical month (${monthAbbr}/${yearAbbr}): No data, using 0`);
+          }
+        } catch (error) {
+          console.error(`Erro ao buscar dados para ${monthAbbr}/${yearAbbr}:`, error);
+          // Em caso de erro, usar 0 (sem dados)
           incomeData.push(0);
           expenseData.push(0);
+          console.log(`Historical month (${monthAbbr}/${yearAbbr}): Error, using 0`);
         }
       }
     }
+
+    console.log('generateHistoricalData returning:', {
+      months,
+      incomeData,
+      expenseData,
+      monthsCount
+    });
 
     return { months, incomeData, expenseData };
   };
@@ -168,9 +189,15 @@ export default function Charts({ summary, categories, selectedMonth, selectedYea
         console.log('Creating income/expenses chart...');
 
         try {
-          const { months, incomeData, expenseData } = generateHistoricalData(show12Months ? 12 : 6);
+          const { months, incomeData, expenseData } = await generateHistoricalData(show12Months ? 12 : 6);
 
           console.log('Historical data generated:', { months, incomeData, expenseData });
+          console.log('Income data array:', incomeData);
+          console.log('Expense data array:', expenseData);
+          console.log('Data types:', {
+            incomeTypes: incomeData.map(v => typeof v),
+            expenseTypes: expenseData.map(v => typeof v)
+          });
 
           const chartData = {
             labels: months,
@@ -275,6 +302,7 @@ export default function Charts({ summary, categories, selectedMonth, selectedYea
           // Verificar se há dados de despesas por categoria
           const hasExpenses = summary?.totalExpenses && summary.totalExpenses > 0;
           const hasExpensesByCategory = summary?.expensesByCategory &&
+            typeof summary.expensesByCategory === 'object' &&
             Object.values(summary.expensesByCategory).some(amount => amount > 0);
 
           console.log('Category chart check:', {
@@ -290,10 +318,12 @@ export default function Charts({ summary, categories, selectedMonth, selectedYea
             const categoryData = Object.entries(expensesByCategory)
               .map(([categoryId, amount]) => {
                 const category = categories.find(c => c.id === categoryId);
+                const amountValue = typeof amount === 'string' ? parseFloat(amount) : (typeof amount === 'number' ? amount : 0);
+
                 return {
                   categoryId,
                   name: category?.name || 'Desconhecido',
-                  amount: typeof amount === 'string' ? parseFloat(amount) : amount,
+                  amount: isNaN(amountValue) ? 0 : amountValue,
                   color: category?.color || '#6B7280',
                 };
               })

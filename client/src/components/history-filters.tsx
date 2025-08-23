@@ -19,6 +19,7 @@ interface Transaction {
   type: 'income' | 'expense';
   categoryId?: string;
   paymentMethod?: string;
+  creditCardId?: string;
 }
 
 interface Category {
@@ -37,7 +38,7 @@ interface HistoryFiltersProps {
 export default function HistoryFilters({ transactions, categories }: HistoryFiltersProps) {
   const [filters, setFilters] = useState({
     period: "all",
-    type: "all", 
+    type: "all",
     categoryId: "all",
     search: "",
   });
@@ -89,7 +90,7 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
   const getPaymentMethodLabel = (method?: string) => {
     const methods: Record<string, string> = {
       dinheiro: "💵 Dinheiro",
-      debito: "💳 Débito", 
+      debito: "💳 Débito",
       credito: "💎 Crédito",
       pix: "📱 PIX",
       transferencia: "🏦 Transferência",
@@ -100,24 +101,24 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
   // Filter transactions based on current filters
   const getFilteredTransactions = () => {
     if (!transactions) return [];
-    
+
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     const currentDate = now.getDate();
-    
+
     return transactions.filter(transaction => {
       const transactionDate = new Date(transaction.date);
-      
+
       // ⚡️ EXCLUIR DESPESAS DE CARTÃO DE CRÉDITO DO HISTÓRICO GERAL
       if (transaction.creditCardId && transaction.type === 'expense') {
         return false;
       }
-      
+
       // Period filter - fix date ranges to be year-aware
       if (filters.period !== "all") {
         let startDate: Date;
-        
+
         switch (filters.period) {
           case "last7":
             startDate = new Date();
@@ -143,37 +144,37 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
           default:
             startDate = new Date(0); // Beginning of time
         }
-        
+
         if (filters.period !== "lastMonth" && transactionDate < startDate) {
           return false;
         }
       }
-      
+
       // Search filter
       if (filters.search && !transaction.description.toLowerCase().includes(filters.search.toLowerCase())) {
         return false;
       }
-      
+
       // Type filter
       if (filters.type !== "all" && transaction.type !== filters.type) {
         return false;
       }
-      
+
       // Category filter
       if (filters.categoryId !== "all" && transaction.categoryId !== filters.categoryId) {
         return false;
       }
-      
+
       // Period filter
       switch (filters.period) {
         case "current-month":
-          return transactionDate.getMonth() === now.getMonth() && 
-                 transactionDate.getFullYear() === now.getFullYear();
+          return transactionDate.getMonth() === now.getMonth() &&
+            transactionDate.getFullYear() === now.getFullYear();
         case "last-month":
           const lastMonthDate = new Date(now);
           lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
-          return transactionDate.getMonth() === lastMonthDate.getMonth() && 
-                 transactionDate.getFullYear() === lastMonthDate.getFullYear();
+          return transactionDate.getMonth() === lastMonthDate.getMonth() &&
+            transactionDate.getFullYear() === lastMonthDate.getFullYear();
         case "last-30-days":
           const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           return transactionDate >= thirtyDaysAgo;
@@ -195,13 +196,13 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
     setFilters({
       period: "all",
       type: "all",
-      categoryId: "all", 
+      categoryId: "all",
       search: "",
     });
   };
 
-  const hasActiveFilters = filters.period !== "all" || filters.type !== "all" || 
-                          filters.categoryId !== "all" || filters.search !== "";
+  const hasActiveFilters = filters.period !== "all" || filters.type !== "all" ||
+    filters.categoryId !== "all" || filters.search !== "";
 
   return (
     <div className="space-y-6">
@@ -316,25 +317,24 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
                     </div>
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
-                        <p className={`text-lg font-semibold ${
-                          transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                        }`}>
+                        <p className={`text-lg font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                          }`}>
                           {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                         </p>
                         <p className="text-sm text-gray-500 capitalize">{transaction.type}</p>
                       </div>
                       <div className="flex gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="text-gray-400 hover:text-blue-600"
                           onClick={() => setEditingTransaction(transaction)}
                         >
                           ✏️
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="text-gray-400 hover:text-red-600"
                           onClick={() => setDeletingTransaction(transaction)}
                         >
@@ -351,7 +351,7 @@ export default function HistoryFilters({ transactions, categories }: HistoryFilt
               <div className="text-gray-400 text-6xl mb-4">📊</div>
               <p className="text-lg text-gray-600 mb-2">Nenhuma transação encontrada</p>
               <p className="text-sm text-gray-500">
-                {hasActiveFilters 
+                {hasActiveFilters
                   ? "Tente ajustar os filtros para ver mais resultados"
                   : "Adicione transações para visualizar o histórico"
                 }

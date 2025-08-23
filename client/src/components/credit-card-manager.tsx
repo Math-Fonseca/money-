@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -284,6 +284,12 @@ export default function CreditCardManager() {
               <DialogTitle>
                 {isEditMode ? "Editar Cartão de Crédito" : "Cadastrar Cartão de Crédito"}
               </DialogTitle>
+              <DialogDescription>
+                {isEditMode
+                  ? "Edite as informações do seu cartão de crédito"
+                  : "Preencha as informações para cadastrar um novo cartão de crédito"
+                }
+              </DialogDescription>
             </DialogHeader>
 
             <Form {...form}>

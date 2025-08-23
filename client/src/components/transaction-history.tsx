@@ -40,10 +40,10 @@ interface TransactionHistoryProps {
   showFilters?: boolean;
 }
 
-export default function TransactionHistory({ 
-  transactions, 
-  categories, 
-  showFilters = true 
+export default function TransactionHistory({
+  transactions,
+  categories,
+  showFilters = true
 }: TransactionHistoryProps) {
   const [filters, setFilters] = useState({
     period: "all",
@@ -68,9 +68,11 @@ export default function TransactionHistory({
         title: "Transação excluída",
         description: "A transação foi excluída com sucesso!",
       });
+      // CORREÇÃO: Invalidar apenas as queries necessárias (sem loop)
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
     },
     onError: () => {
       toast({
@@ -141,9 +143,8 @@ export default function TransactionHistory({
             return (
               <div key={transaction.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
                 <div className="flex items-center">
-                  <div className={`w-10 h-10 bg-opacity-10 rounded-lg flex items-center justify-center mr-3 ${
-                    transaction.type === 'income' ? 'bg-secondary' : 'bg-error'
-                  }`}>
+                  <div className={`w-10 h-10 bg-opacity-10 rounded-lg flex items-center justify-center mr-3 ${transaction.type === 'income' ? 'bg-secondary' : 'bg-error'
+                    }`}>
                     <span className={transaction.type === 'income' ? 'text-secondary' : 'text-error'}>
                       {categoryInfo.icon}
                     </span>
@@ -241,9 +242,8 @@ export default function TransactionHistory({
               return (
                 <div key={transaction.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="flex items-center">
-                    <div className={`w-12 h-12 bg-opacity-10 rounded-lg flex items-center justify-center mr-4 ${
-                      transaction.type === 'income' ? 'bg-secondary' : 'bg-error'
-                    }`}>
+                    <div className={`w-12 h-12 bg-opacity-10 rounded-lg flex items-center justify-center mr-4 ${transaction.type === 'income' ? 'bg-secondary' : 'bg-error'
+                      }`}>
                       <span className={`text-lg ${transaction.type === 'income' ? 'text-secondary' : 'text-error'}`}>
                         {categoryInfo.icon}
                       </span>
@@ -271,23 +271,23 @@ export default function TransactionHistory({
                     <p className="text-sm text-gray-600">{formatDate(transaction.date)}</p>
                   </div>
                   <div className="ml-4 flex gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="text-gray-400 hover:text-blue-600"
                       onClick={() => setEditingTransaction(transaction)}
                     >
                       ✏️
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="text-gray-400 hover:text-red-600"
                       onClick={() => {
                         // ⚡️ NOVA LÓGICA USANDO CAMPOS DO BANCO DE DADOS
                         const isInstallment = Boolean(transaction.isInstallment);
                         const isRecurring = Boolean(transaction.isRecurring) && !isInstallment;
-                        
+
                         console.log('⚡️ ANÁLISE EXCLUSÃO - LÓGICA CORRIGIDA:', {
                           id: transaction.id,
                           description: transaction.description,
@@ -301,7 +301,7 @@ export default function TransactionHistory({
                           '✅ isRecurring': isRecurring,
                           '🎯 MODAL': isInstallment ? 'PARCELAS (SÓ EXCLUIR TODAS)' : isRecurring ? 'RECORRENTE (ESTA/TODAS)' : 'NORMAL'
                         });
-                        
+
                         if (isInstallment) {
                           // Compra parcelada no cartão → APENAS "Excluir todas as parcelas"
                           setDeletingTransaction(transaction);

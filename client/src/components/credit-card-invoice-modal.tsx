@@ -70,28 +70,28 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
   const getInvoicePeriod = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
-    const closingDay = creditCard?.closingDay || 1;
+    const closingDay = creditCard?.closingDay || 5;
 
-    // CORREÇÃO: A fatura inclui transações desde o dia de fechamento anterior + 1
-    // até o dia de fechamento atual
+    // CORREÇÃO: Cálculo SIMPLIFICADO e CORRETO
     let startDate: Date;
     let endDate: Date;
 
     if (closingDay === 1) {
-      // Caso especial: se fecha no dia 1, a fatura é do mês anterior
-      startDate = new Date(year, month - 1, 1);
-      endDate = new Date(year, month - 1, 31);
+      // Se fecha no dia 1, fatura é do mês atual
+      startDate = new Date(year, month, 1);
+      endDate = new Date(year, month, 31);
     } else {
-      // Caso normal: fatura vai do fechamento anterior + 1 até o fechamento atual
-      // Exemplo: se fecha no dia 5, a fatura vai do dia 6 do mês anterior até o dia 5 do mês atual
+      // Se fecha no dia X, fatura vai do dia X+1 do mês anterior até dia X do mês atual
       startDate = new Date(year, month - 1, closingDay + 1);
       endDate = new Date(year, month, closingDay);
     }
 
     // Debug: verificar se as datas estão corretas
-    console.log(`Período calculado para ${creditCard?.name}:`, {
+    console.log(`🔍 Período calculado para ${creditCard?.name}:`, {
       startDate: format(startDate, 'dd/MM/yyyy'),
       endDate: format(endDate, 'dd/MM/yyyy'),
+      startDateISO: startDate.toISOString().split('T')[0],
+      endDateISO: endDate.toISOString().split('T')[0],
       closingDay,
       currentMonth: month + 1,
       currentYear: year
@@ -100,6 +100,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     return { startDate, endDate };
   };
 
+  // CORREÇÃO: Calcular período baseado na data selecionada (não na data atual)
   const { startDate, endDate } = creditCard ? getInvoicePeriod(currentDate) : { startDate: new Date(), endDate: new Date() };
 
   // Debug: mostrar período da fatura
@@ -118,13 +119,56 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
   console.log(`  - Transações de 06/08/2025 até 05/09/2025`);
 
   // Fetch transactions for current invoice period - CORRIGIDO URL
-  const { data: transactions = [] } = useQuery({
+  const { data: transactions = [], refetch: refetchTransactions, isLoading, error } = useQuery({
     queryKey: [`/api/transactions/credit-card/${creditCard?.id}/${format(startDate, 'yyyy-MM-dd')}/${format(endDate, 'yyyy-MM-dd')}`],
     enabled: !!creditCard && isOpen,
+    retry: 3,
+    refetchOnWindowFocus: true,
+    // CORREÇÃO: Forçar refetch quando mudar o período
+    refetchInterval: false,
   });
 
+  // CORREÇÃO: Atualização automática APENAS quando a fatura for aberta (não a cada mudança)
+  useEffect(() => {
+    if (isOpen && creditCard) {
+      // CORREÇÃO: Refetch apenas uma vez quando abrir
+      refetchTransactions();
+      console.log('🔄 Transações carregadas ao abrir fatura');
+    }
+  }, [isOpen, creditCard, refetchTransactions]);
+
+  // CORREÇÃO: Forçar recálculo quando mudar o mês
+  useEffect(() => {
+    if (creditCard && isOpen) {
+      const newPeriod = getInvoicePeriod(currentDate);
+      console.log(`🔄 Período recalculado para ${creditCard.name}:`, {
+        startDate: format(newPeriod.startDate, 'dd/MM/yyyy'),
+        endDate: format(newPeriod.endDate, 'dd/MM/yyyy')
+      });
+
+      // CORREÇÃO: Forçar refetch das transações quando mudar o período
+      if (newPeriod.startDate.getTime() !== startDate.getTime() || newPeriod.endDate.getTime() !== endDate.getTime()) {
+        console.log(`🔄 Período mudou, forçando refetch das transações`);
+        refetchTransactions();
+      }
+    }
+  }, [currentDate, creditCard, isOpen, startDate, endDate, refetchTransactions]);
+
+  // CORREÇÃO: Buscar transações apenas se não houver nenhuma (sem loop)
+  useEffect(() => {
+    if (isOpen && creditCard && Array.isArray(transactions) && transactions.length === 0) {
+      console.log('⚠️ Nenhuma transação encontrada, buscando...');
+      refetchTransactions();
+    }
+  }, [isOpen, creditCard, Array.isArray(transactions) ? transactions.length : 0, refetchTransactions]);
+
   // Debug: mostrar transações recebidas
-  console.log(`Transações recebidas para ${creditCard?.name}:`, transactions);
+  console.log(`🔍 Transações recebidas para ${creditCard?.name}:`, transactions);
+  console.log(`🔍 Período da fatura: ${format(startDate, 'dd/MM/yyyy')} - ${format(endDate, 'dd/MM/yyyy')}`);
+  console.log(`🔍 URL da query: /api/transactions/credit-card/${creditCard?.id}/${format(startDate, 'yyyy-MM-dd')}/${format(endDate, 'yyyy-MM-dd')}`);
+  console.log(`🔍 Status da query:`, { isLoading, error, dataLength: Array.isArray(transactions) ? transactions.length : 0 });
+  console.log(`🔍 CreditCard ID:`, creditCard?.id);
+  console.log(`🔍 Modal aberto:`, isOpen);
 
   // Fetch subscriptions for current invoice period - CORRIGIDO URL
   const { data: subscriptions = [] } = useQuery({
@@ -149,7 +193,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     sum + parseFloat(t.amount), 0
   );
 
-  // Calculate invoice status based on dates and payments
+  // CORREÇÃO: Lógica de status baseada no período de fechamento
   const getInvoiceStatus = () => {
     const today = new Date();
     const closingDate = new Date(endDate);
@@ -157,17 +201,22 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
     dueDate.setDate(creditCard?.dueDay || 10);
 
     const paidAmount = invoice?.paidAmount ? parseFloat(invoice.paidAmount) : 0;
+    const isInvoiceClosed = today > closingDate;
 
+    // Se a fatura ainda está em aberto, status sempre "ABERTA" independente do pagamento
+    if (!isInvoiceClosed) {
+      return { status: "ABERTA", color: "bg-green-500 text-white" };
+    }
+
+    // Fatura já fechada - pode ter status baseado no pagamento
     if (paidAmount >= totalInvoiceAmount && totalInvoiceAmount > 0) {
-      return { status: "PAGO", color: "text-green-600" };
+      return { status: "PAGO", color: "bg-blue-500 text-white" };
     } else if (paidAmount > 0 && paidAmount < totalInvoiceAmount) {
-      return { status: "PARCIAL", color: "text-yellow-600" };
+      return { status: "PARCIAL", color: "bg-yellow-500 text-white" };
     } else if (today > dueDate && totalInvoiceAmount > 0) {
-      return { status: "VENCIDA", color: "text-red-600" };
-    } else if (today > closingDate) {
-      return { status: "FECHADA", color: "text-blue-600" };
+      return { status: "VENCIDA", color: "bg-red-500 text-white" };
     } else {
-      return { status: "ABERTA", color: "text-gray-600" };
+      return { status: "FECHADA", color: "bg-gray-500 text-white" };
     }
   };
 
@@ -183,8 +232,19 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
         title: "Pagamento registrado",
         description: "O pagamento da fatura foi registrado com sucesso!",
       });
+      // CORREÇÃO: Invalidar todas as queries relacionadas para forçar atualização
       queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      // Invalidar especificamente a query desta fatura
+      if (creditCard?.id) {
+        queryClient.invalidateQueries({
+          queryKey: [`/api/credit-card-invoices/${creditCard.id}/${format(endDate, 'yyyy-MM-dd')}`]
+        });
+        queryClient.invalidateQueries({
+          queryKey: [`/api/transactions/credit-card/${creditCard.id}/${format(startDate, 'yyyy-MM-dd')}/${format(endDate, 'yyyy-MM-dd')}`]
+        });
+      }
       setPaymentAmount("");
     },
     onError: () => {
@@ -296,12 +356,13 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
               ← Mês Anterior
             </Button>
             <div className="text-center">
-              <h3 className="font-semibold">
+              <h3 className="text-sm font-semibold">
                 {format(startDate, "dd 'de' MMMM", { locale: ptBR })} - {format(endDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs text-gray-600">
                 Vencimento: {format(addMonths(endDate, 0).setDate(creditCard.dueDay), "dd 'de' MMMM", { locale: ptBR })}
               </p>
+              {/* Atualização automática - sem botão manual */}
             </div>
             <Button variant="outline" onClick={navigateToNextMonth}>
               Próximo Mês →

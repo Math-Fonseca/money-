@@ -58,9 +58,9 @@ function CreditCardExpenses() {
 
   const creditCards = creditCardsResponse?.data || [];
   const allTransactions = transactionsResponse?.data || [];
-  
+
   // Filtrar apenas transações de cartão de crédito
-  const creditCardTransactions = allTransactions.filter((t: Transaction) => 
+  const creditCardTransactions = allTransactions.filter((t: Transaction) =>
     t.paymentMethod === 'credito' && t.type === 'expense'
   );
 
@@ -106,9 +106,12 @@ function CreditCardExpenses() {
       return apiRequest(`/api/transactions/${data.id}`, "DELETE");
     },
     onSuccess: () => {
+      // CORREÇÃO: Invalidar apenas as queries necessárias (sem loop)
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
+
       toast({
         title: "Sucesso",
         description: "Despesa excluída com sucesso!",
@@ -157,9 +160,9 @@ function CreditCardExpenses() {
   const handleDelete = (transaction: Transaction) => {
     if (transaction.isInstallment || (transaction.installments && transaction.installments > 1)) {
       // Para parcelas, sempre excluir todas
-      deleteTransactionMutation.mutate({ 
-        id: transaction.parentTransactionId || transaction.id, 
-        deleteAll: true 
+      deleteTransactionMutation.mutate({
+        id: transaction.parentTransactionId || transaction.id,
+        deleteAll: true
       });
     } else {
       deleteTransactionMutation.mutate({ id: transaction.id });
@@ -298,9 +301,9 @@ function CreditCardExpenses() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
+            <Button
+              type="submit"
+              className="w-full"
               disabled={createCreditCardExpenseMutation.isPending}
             >
               {createCreditCardExpenseMutation.isPending ? "Cadastrando..." : "Cadastrar Despesa"}
@@ -321,7 +324,7 @@ function CreditCardExpenses() {
                 const categoryInfo = getCategoryInfo(transaction.categoryId);
                 const card = creditCards.find((c: CreditCard) => c.id === transaction.creditCardId);
                 const brandInfo = card ? getBrandInfo(card.brand) : { name: "Cartão", icon: "💳" };
-                
+
                 return (
                   <div key={transaction.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="flex items-center">
@@ -354,17 +357,17 @@ function CreditCardExpenses() {
                         <p className="text-sm text-gray-600">{formatDate(transaction.date)}</p>
                       </div>
                       <div className="flex gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="text-gray-400 hover:text-blue-600"
                           onClick={() => setEditingTransaction(transaction)}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="text-gray-400 hover:text-red-600"
                           onClick={() => handleDelete(transaction)}
                           disabled={deleteTransactionMutation.isPending}

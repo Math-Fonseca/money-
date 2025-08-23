@@ -725,8 +725,8 @@ export default function ExpenseForm({ categories, selectedMonth, selectedYear }:
                   <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
                     <div className="text-red-500 text-2xl">⚠️</div>
                     <div className="text-sm text-red-700">
-                      <p className="font-medium">Atenção!</p>
-                      <p className="text-xs mt-1">Esta ação não pode ser desfeita.</p>
+                      <div className="font-medium">Atenção!</div>
+                      <div className="text-xs mt-1">Esta ação não pode ser desfeita.</div>
                     </div>
                   </div>
                   <p className="text-gray-700 leading-relaxed text-center">
