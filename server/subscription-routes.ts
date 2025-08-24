@@ -312,52 +312,6 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// 🔄 PUT /api/subscriptions/:id/toggle - Ativar/Desativar assinatura
-router.put("/:id/toggle", async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const subscription = await storage.getSubscriptionById(id);
-    if (!subscription) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Assinatura não encontrada" 
-      });
-    }
-    
-    const newStatus = !subscription.isActive;
-    const updatedSubscription = await storage.updateSubscription(id, { 
-      isActive: newStatus 
-    });
-    
-    if (!updatedSubscription) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Assinatura não encontrada" 
-      });
-    }
-    
-    // Se for assinatura de cartão de crédito, recalcular limite
-    if (updatedSubscription.paymentMethod === 'credito' && updatedSubscription.creditCardId) {
-      await calculateCurrentInvoiceLimit(updatedSubscription.creditCardId);
-    }
-    
-    const action = newStatus ? "ativada" : "desativada";
-    
-    res.json({
-      success: true,
-      data: updatedSubscription,
-      message: `Assinatura ${action} com sucesso!`
-    });
-  } catch (error) {
-    console.error('Erro ao alterar status da assinatura:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Erro ao alterar status da assinatura" 
-    });
-  }
-});
-
 // 💳 GET /api/subscriptions/credit-card/:creditCardId - Assinaturas de um cartão específico
 router.get("/credit-card/:creditCardId", async (req, res) => {
   try {
@@ -378,6 +332,18 @@ router.get("/credit-card/:creditCardId", async (req, res) => {
       success: false, 
       message: "Erro ao buscar assinaturas do cartão" 
     });
+  }
+});
+
+// 🔥 ROTA DE TOGGLE RESTAURADA: Ativar/Desativar assinatura
+router.put("/:id/toggle", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const subscription = await storage.toggleSubscription(id);
+    res.json({ success: true, data: subscription });
+  } catch (error) {
+    console.error("Erro ao alternar status da assinatura:", error);
+    res.status(500).json({ success: false, error: "Erro interno do servidor" });
   }
 });
 

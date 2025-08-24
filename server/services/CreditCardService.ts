@@ -122,6 +122,7 @@ export class CreditCardService {
 
   /**
    * Calculate invoice for a credit card in a specific period
+   * 🔥 CORREÇÃO FINAL: Assinatura SEMPRE aparece na fatura atual (independente do status)
    */
   async calculateInvoice(creditCardId: string, startDate: Date, endDate: Date): Promise<{
     transactions: any[];
@@ -144,18 +145,40 @@ export class CreditCardService {
       t.creditCardId === creditCardId && t.type === 'expense'
     );
 
-    // Get active subscriptions for this credit card
+    // 🔥 CORREÇÃO FINAL: Buscar TODAS as assinaturas da fatura atual
+    // REGRA: Se a assinatura foi criada ANTES do fim da fatura, ela SEMPRE aparece
     const allSubscriptions = await this.storage.getSubscriptions();
-    const subscriptions = allSubscriptions.filter(s => 
-      s.creditCardId === creditCardId && 
-      s.paymentMethod === 'credito' &&
-      s.isActive
-    );
+    const subscriptions = allSubscriptions.filter(s => {
+      if (s.creditCardId !== creditCardId || s.paymentMethod !== 'credito') {
+        return false;
+      }
+
+      const subscriptionCreated = new Date(s.createdAt || new Date());
+      
+      // 🔥 REGRA SIMPLES: Assinatura aparece se foi criada ANTES do fim da fatura
+      // NÃO importa se está ativa ou inativa - usuário usou, deve pagar!
+      const wasCreatedBeforeInvoiceEnd = subscriptionCreated.getTime() <= endDate.getTime();
+      
+      if (!wasCreatedBeforeInvoiceEnd) {
+        console.log(`❌ Assinatura ${s.name}: Não aparece (criada após o fim da fatura)`);
+        return false;
+      }
+      
+      // 🔥 REGRA PRINCIPAL: Se foi criada antes do fim da fatura, SEMPRE aparece
+      // independente de estar ativa ou inativa
+      console.log(`✅ Assinatura ${s.name}: APARECE na fatura (criada em ${subscriptionCreated.toISOString().split('T')[0]}) - Status: ${s.isActive ? 'ATIVA' : 'INATIVA'}`);
+      return true;
+    });
 
     // Calculate total amount
     const transactionsTotal = transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
     const subscriptionsTotal = subscriptions.reduce((sum, s) => sum + parseFloat(s.amount), 0);
     const totalAmount = transactionsTotal + subscriptionsTotal;
+
+    console.log(`📊 Fatura calculada:`);
+    console.log(`   - Transações: R$ ${transactionsTotal.toFixed(2)}`);
+    console.log(`   - Assinaturas: R$ ${subscriptionsTotal.toFixed(2)} (${subscriptions.length} assinaturas)`);
+    console.log(`   - Total: R$ ${totalAmount.toFixed(2)}`);
 
     return {
       transactions,
@@ -167,6 +190,7 @@ export class CreditCardService {
 
   /**
    * Process credit card payment
+   * 🔥 ATUALIZADO: Agora usa a lógica de limite inteligente
    */
   async processPayment(creditCardId: string, paymentAmount: number): Promise<CreditCardModel> {
     const creditCard = await this.getCreditCardById(creditCardId);
@@ -178,19 +202,70 @@ export class CreditCardService {
       throw new Error('Payment amount must be positive');
     }
 
-    if (paymentAmount > creditCard.getCurrentUsed()) {
-      throw new Error('Payment amount cannot exceed current used amount');
+    // 🔥 NOVA LÓGICA: Verificar se o pagamento é válido para a fatura atual
+    const smartLimit = await this.calculateSmartLimit(creditCardId);
+    
+    if (paymentAmount > smartLimit.remainingBalance) {
+      throw new Error(`Valor do pagamento (R$ ${paymentAmount}) não pode exceder o saldo restante da fatura (R$ ${smartLimit.remainingBalance})`);
     }
 
-    // Subtract payment from current used amount
-    creditCard.subtractFromUsedAmount(paymentAmount);
+    // Processar o pagamento na fatura
+    const invoices = await this.storage.getCreditCardInvoices();
+    const creditCardInvoices = invoices.filter(inv => inv.creditCardId === creditCardId);
     
-    const updated = await this.storage.updateCreditCard(creditCardId, creditCard.toData());
+    // Buscar fatura atual
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const closingDay = creditCard.getClosingDay();
+
+    let invoiceStartDate: Date;
+    let invoiceEndDate: Date;
+
+    if (closingDay === 1) {
+      invoiceStartDate = new Date(currentYear, currentMonth, 1);
+      invoiceEndDate = new Date(currentYear, currentMonth + 1, 0);
+    } else {
+      invoiceStartDate = new Date(currentYear, currentMonth - 1, closingDay);
+      invoiceEndDate = new Date(currentYear, currentMonth, closingDay - 1);
+    }
+
+    const currentInvoice = creditCardInvoices.find(inv => {
+      const invoiceDate = new Date(inv.dueDate);
+      return invoiceDate >= invoiceStartDate && invoiceDate <= invoiceEndDate;
+    });
+
+    if (currentInvoice) {
+      // Atualizar fatura existente
+      const newPaidAmount = parseFloat(currentInvoice.paidAmount || '0') + paymentAmount;
+      const newStatus = newPaidAmount >= smartLimit.currentInvoiceAmount ? 'paid' : 'partial';
+      
+      await this.storage.updateCreditCardInvoice(currentInvoice.id, {
+        paidAmount: newPaidAmount.toString(),
+        status: newStatus
+      });
+    } else {
+      // Criar nova fatura se não existir
+      await this.storage.createCreditCardInvoice({
+        creditCardId,
+        dueDate: invoiceEndDate.toISOString(),
+        totalAmount: smartLimit.currentInvoiceAmount.toString(),
+        paidAmount: paymentAmount.toString(),
+        status: paymentAmount >= smartLimit.currentInvoiceAmount ? 'paid' : 'partial'
+      });
+    }
+
+    // Recalcular limite após pagamento
+    await this.calculateSmartLimit(creditCardId);
+    
+    // Retornar cartão atualizado
+    const updated = await this.storage.getCreditCardById(creditCardId);
     return CreditCardModel.fromData(updated);
   }
 
   /**
    * Get credit cards summary
+   * 🔥 ATUALIZADO: Agora usa a lógica de limite inteligente
    */
   async getCreditCardsSummary(): Promise<{
     totalCards: number;
@@ -206,9 +281,34 @@ export class CreditCardService {
     const activeCards = creditCards.filter(cc => cc.getIsActive()).length;
     const blockedCards = creditCards.filter(cc => cc.getIsBlocked()).length;
     
-    const totalLimit = creditCards.reduce((sum, cc) => sum + cc.getLimit(), 0);
-    const totalUsed = creditCards.reduce((sum, cc) => sum + cc.getCurrentUsed(), 0);
-    const totalAvailable = totalLimit - totalUsed;
+    // 🔥 NOVA LÓGICA: Calcular limites usando sistema inteligente
+    let totalLimit = 0;
+    let totalUsed = 0;
+    let totalAvailable = 0;
+
+    for (const card of creditCards) {
+      try {
+        const cardId = card.getId();
+        if (cardId) {
+          const smartLimit = await this.calculateSmartLimit(cardId);
+          totalLimit += card.getLimit();
+          totalUsed += smartLimit.currentUsed;
+          totalAvailable += smartLimit.availableLimit;
+        } else {
+          // Fallback se não tiver ID
+          totalLimit += card.getLimit();
+          totalUsed += card.getCurrentUsed();
+          totalAvailable += card.getAvailableLimit();
+        }
+      } catch (error) {
+        console.error(`Erro ao calcular limite inteligente para cartão ${card.getId()}:`, error);
+        // Fallback para valores antigos
+        totalLimit += card.getLimit();
+        totalUsed += card.getCurrentUsed();
+        totalAvailable += card.getAvailableLimit();
+      }
+    }
+
     const usagePercentage = totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0;
 
     return {
@@ -224,6 +324,7 @@ export class CreditCardService {
 
   /**
    * Validate if a purchase can be made with a credit card
+   * 🔥 ATUALIZADO: Agora usa a lógica de limite inteligente
    */
   async validatePurchase(creditCardId: string, amount: number): Promise<{
     canPurchase: boolean;
@@ -243,46 +344,224 @@ export class CreditCardService {
       return { canPurchase: false, reason: 'Credit card is inactive' };
     }
 
-    if (!creditCard.canAccommodatePurchase(amount)) {
+    // 🔥 NOVA LÓGICA: Usar limite inteligente baseado na fatura atual
+    const smartLimit = await this.calculateSmartLimit(creditCardId);
+    
+    if (smartLimit.invoiceStatus === 'closed') {
       return { 
         canPurchase: false, 
-        reason: 'Insufficient credit limit',
-        availableLimit: creditCard.getAvailableLimit()
+        reason: 'Fatura fechada. Limite disponível após pagamento da fatura atual.',
+        availableLimit: 0
       };
     }
 
-    return { canPurchase: true, availableLimit: creditCard.getAvailableLimit() };
+    if (amount > smartLimit.availableLimit) {
+      return { 
+        canPurchase: false, 
+        reason: 'Valor excede o limite disponível para a fatura atual',
+        availableLimit: smartLimit.availableLimit
+      };
+    }
+
+    return { 
+      canPurchase: true, 
+      availableLimit: smartLimit.availableLimit 
+    };
   }
 
   /**
    * Recalculate credit card limit based on transactions AND subscriptions
+   * 🔥 ATUALIZADO: Agora usa a lógica de limite inteligente
    */
   async recalculateLimit(creditCardId: string): Promise<number> {
+    // Usar a nova função de limite inteligente
+    const smartLimit = await this.calculateSmartLimit(creditCardId);
+    
+    // Retornar o limite usado atual
+    return smartLimit.currentUsed;
+  }
+
+  /**
+   * 🔥 NOVA FUNÇÃO: Calcular limite inteligente baseado no saldo da fatura atual
+   * Esta função implementa a lógica de limite = saldo restante da fatura
+   */
+  async calculateSmartLimit(creditCardId: string): Promise<{
+    availableLimit: number;
+    currentUsed: number;
+    invoiceStatus: 'open' | 'closed' | 'paid';
+    currentInvoiceAmount: number;
+    paidAmount: number;
+    remainingBalance: number;
+  }> {
+    const creditCard = await this.getCreditCardById(creditCardId);
+    if (!creditCard) {
+      throw new Error('Credit card not found');
+    }
+
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const closingDay = creditCard.getClosingDay();
+
+    // 🔥 CORREÇÃO: Calcular período da fatura atual corretamente
+    let invoiceStartDate: Date;
+    let invoiceEndDate: Date;
+
+    if (closingDay === 1) {
+      // Se fecha no dia 1, fatura atual é do mês atual
+      invoiceStartDate = new Date(currentYear, currentMonth, 1);
+      invoiceEndDate = new Date(currentYear, currentMonth + 1, 0);
+    } else {
+      // 🔥 LÓGICA CORRIGIDA: Para cartões que fecham no dia X
+      // A fatura atual é sempre a que está em aberto no momento
+      if (today.getDate() >= closingDay) {
+        // Se hoje é dia X ou depois, fatura atual vai do dia X do mês atual até dia X-1 do próximo mês
+        invoiceStartDate = new Date(currentYear, currentMonth, closingDay);
+        invoiceEndDate = new Date(currentYear, currentMonth + 1, closingDay - 1);
+      } else {
+        // Se hoje é antes do dia X, fatura atual vai do dia X do mês anterior até dia X-1 do mês atual
+        invoiceStartDate = new Date(currentYear, currentMonth - 1, closingDay);
+        invoiceEndDate = new Date(currentYear, currentMonth, closingDay - 1);
+      }
+    }
+
+    // 🔥 CORREÇÃO ADICIONAL: Se a fatura calculada for futura, usar a fatura anterior
+    if (invoiceStartDate > today) {
+      // A fatura calculada é futura, usar a fatura anterior
+      if (closingDay === 1) {
+        invoiceStartDate = new Date(currentYear, currentMonth - 1, 1);
+        invoiceEndDate = new Date(currentYear, currentMonth, 0);
+      } else {
+        invoiceStartDate = new Date(currentYear, currentMonth - 1, closingDay);
+        invoiceEndDate = new Date(currentYear, currentMonth, closingDay - 1);
+      }
+      console.log(`🔄 Fatura calculada era futura, usando fatura anterior`);
+    }
+
+    console.log(`🔥 Calculando fatura para ${creditCard.getName()}:`);
+    console.log(`   - Data atual: ${today.toISOString().split('T')[0]}`);
+    console.log(`   - Dia de fechamento: ${closingDay}`);
+    console.log(`   - Período da fatura: ${invoiceStartDate.toISOString().split('T')[0]} até ${invoiceEndDate.toISOString().split('T')[0]}`);
+    console.log(`   - Data atual é: ${today.getDate()}, dia de fechamento é: ${closingDay}`);
+    console.log(`   - Fatura fechou? ${today > invoiceEndDate ? 'SIM' : 'NÃO'}`);
+
+    // Verificar se a fatura atual já fechou
+    const hasClosed = today > invoiceEndDate;
+    
+    // Buscar faturas do cartão
+    const invoices = await this.storage.getCreditCardInvoices();
+    const creditCardInvoices = invoices.filter(inv => inv.creditCardId === creditCardId);
+
+    // Buscar fatura atual (em aberto ou fechada)
+    const currentInvoice = creditCardInvoices.find(inv => {
+      const invoiceDate = new Date(inv.dueDate);
+      return invoiceDate >= invoiceStartDate && invoiceDate <= invoiceEndDate;
+    });
+
+    // Buscar transações da fatura atual
     const transactions = await this.storage.getTransactions();
-    const creditCardTransactions = transactions.filter((t: any) => 
-      t.creditCardId === creditCardId && t.type === 'expense'
-    );
+    const currentInvoiceTransactions = transactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      const isCorrectCard = t.creditCardId === creditCardId;
+      const isExpense = t.type === 'expense';
+      const isInPeriod = transactionDate >= invoiceStartDate && transactionDate <= invoiceEndDate;
+      
+      console.log(`🔍 Transação ${t.description}: cartão=${isCorrectCard}, período=${isInPeriod} (${t.date} >= ${invoiceStartDate.toISOString().split('T')[0]} && ${t.date} <= ${invoiceEndDate.toISOString().split('T')[0]})`);
+      
+      return isCorrectCard && isExpense && isInPeriod;
+    });
 
-    // ⚡️ INCLUIR ASSINATURAS ATIVAS NO CÁLCULO DO LIMITE
-    const subscriptions = await this.storage.getActiveSubscriptions();
-    const creditCardSubscriptions = subscriptions.filter(s => 
-      s.creditCardId === creditCardId && s.paymentMethod === 'credito' && s.isActive
-    );
+    // Buscar assinaturas da fatura atual (independente do status)
+    const subscriptions = await this.storage.getSubscriptions();
+    const currentInvoiceSubscriptions = subscriptions.filter(s => {
+      if (s.creditCardId !== creditCardId || s.paymentMethod !== 'credito') {
+        return false;
+      }
 
-    const transactionTotal = creditCardTransactions.reduce((sum: number, t: any) => 
+      const subscriptionCreated = new Date(s.createdAt || new Date());
+      
+      // 🔥 LÓGICA FINAL CORRIGIDA: Assinatura deve aparecer na fatura se:
+      // 1. Foi criada ANTES do fim da fatura atual, E
+      // 2. Para a fatura ATUAL: SEMPRE aparece (independente do status)
+      // 3. Para faturas FUTURAS: só aparece se estiver ativa
+      
+      const wasCreatedBeforeInvoiceEnd = subscriptionCreated.getTime() <= invoiceEndDate.getTime();
+      
+      if (!wasCreatedBeforeInvoiceEnd) {
+        console.log(`❌ Assinatura ${s.name}: Não deve aparecer na fatura (criada após o fim da fatura)`);
+        return false;
+      }
+      
+      // 🔥 REGRA PRINCIPAL: Na fatura atual, assinatura SEMPRE aparece
+      // independente de estar ativa ou inativa (usuário usou, deve pagar)
+      console.log(`✅ Assinatura ${s.name}: Deve aparecer na fatura atual (criada em ${subscriptionCreated.toISOString().split('T')[0]}) - Status: ${s.isActive ? 'ATIVA' : 'INATIVA'}`);
+      return true;
+    });
+
+    // Calcular valores da fatura atual
+    const transactionsTotal = currentInvoiceTransactions.reduce((sum, t) => 
       sum + parseFloat(t.amount), 0
     );
-
-    const subscriptionTotal = creditCardSubscriptions.reduce((sum: number, s: any) => 
+    
+    const subscriptionsTotal = currentInvoiceSubscriptions.reduce((sum, s) => 
       sum + parseFloat(s.amount), 0
     );
 
-    const totalUsed = transactionTotal + subscriptionTotal;
+    const currentInvoiceAmount = transactionsTotal + subscriptionsTotal;
+    const paidAmount = currentInvoice ? parseFloat(currentInvoice.paidAmount || '0') : 0;
+    const remainingBalance = currentInvoiceAmount - paidAmount;
 
+    console.log(`📊 Valores da fatura:`);
+    console.log(`   - Transações: R$ ${transactionsTotal.toFixed(2)}`);
+    console.log(`   - Assinaturas: R$ ${subscriptionsTotal.toFixed(2)}`);
+    console.log(`   - Total da fatura: R$ ${currentInvoiceAmount.toFixed(2)}`);
+    console.log(`   - Valor pago: R$ ${paidAmount.toFixed(2)}`);
+    console.log(`   - Saldo restante: R$ ${remainingBalance.toFixed(2)}`);
+
+    // 🔥 LÓGICA DO LIMITE INTELIGENTE:
+    let availableLimit: number;
+    let invoiceStatus: 'open' | 'closed' | 'paid';
+
+    if (hasClosed) {
+      // Fatura fechou mas ainda não foi paga
+      if (remainingBalance > 0) {
+        invoiceStatus = 'closed';
+        // Limite = 0 (fatura fechada, não pode usar mais)
+        availableLimit = 0;
+      } else {
+        invoiceStatus = 'paid';
+        // Fatura foi paga, limite = próximo ciclo
+        availableLimit = creditCard.getLimit();
+      }
+    } else {
+      // Fatura ainda está em aberto
+      invoiceStatus = 'open';
+      // Limite = Saldo restante da fatura atual
+      availableLimit = Math.max(0, creditCard.getLimit() - remainingBalance);
+    }
+
+    // Atualizar o cartão com o limite usado atual
+    const currentUsed = remainingBalance;
+    
     await this.storage.updateCreditCard(creditCardId, {
-      currentUsed: totalUsed.toString()
+      currentUsed: currentUsed.toString()
     });
 
-    return totalUsed;
+    console.log(`🔥 Limite Inteligente calculado para ${creditCard.getName()}:`);
+    console.log(`   - Status da fatura: ${invoiceStatus}`);
+    console.log(`   - Valor da fatura: R$ ${currentInvoiceAmount.toFixed(2)}`);
+    console.log(`   - Valor pago: R$ ${paidAmount.toFixed(2)}`);
+    console.log(`   - Saldo restante: R$ ${remainingBalance.toFixed(2)}`);
+    console.log(`   - Limite disponível: R$ ${availableLimit.toFixed(2)}`);
+    console.log(`   - Limite total: R$ ${creditCard.getLimit().toFixed(2)}`);
+
+    return {
+      availableLimit,
+      currentUsed,
+      invoiceStatus,
+      currentInvoiceAmount,
+      paidAmount,
+      remainingBalance
+    };
   }
 }

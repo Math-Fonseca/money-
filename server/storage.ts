@@ -63,6 +63,7 @@ export interface IStorage {
   createSubscription(subscription: InsertSubscription): Promise<Subscription>;
   updateSubscription(id: string, subscription: Partial<InsertSubscription>): Promise<Subscription | undefined>;
   deleteSubscription(id: string): Promise<boolean>;
+  toggleSubscription(id: string): Promise<Subscription | undefined>;
 
   // Credit Card Invoices
   getCreditCardInvoices(): Promise<CreditCardInvoice[]>;
@@ -562,6 +563,20 @@ export class MemStorage implements IStorage {
   async deleteSubscription(id: string): Promise<boolean> {
     // ⚡️ NÃO MEXER NO LIMITE QUANDO DELETAR ASSINATURA
     return this.subscriptions.delete(id);
+  }
+
+  // 🔥 NOVA FUNÇÃO: Toggle para ativar/desativar assinatura
+  async toggleSubscription(id: string): Promise<Subscription | undefined> {
+    const existing = this.subscriptions.get(id);
+    if (!existing) return undefined;
+    
+    const updated: Subscription = { 
+      ...existing, 
+      isActive: !existing.isActive 
+    };
+    
+    this.subscriptions.set(id, updated);
+    return updated;
   }
 
   // Credit Card Invoices

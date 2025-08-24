@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import subscriptionRoutes from "./subscription-routes";
+import { CreditCardService } from "./services/CreditCardService";
 
 // National and SP holidays (fixed and calculated dates)
 function getBrazilianHolidays(year: number): Date[] {
@@ -1015,114 +1016,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const today = new Date();
       
       for (const card of creditCards) {
-        // Verificar faturas dos últimos 3 meses para fechar automaticamente
-        for (let monthsAgo = 0; monthsAgo <= 3; monthsAgo++) {
-          const checkDate = new Date(today);
-          checkDate.setMonth(checkDate.getMonth() - monthsAgo);
-          
-          const year = checkDate.getFullYear();
-          const month = checkDate.getMonth();
-          const closingDay = card.closingDay;
-          
-          // Data de fechamento da fatura
-          const closingDate = new Date(year, month, closingDay);
-          
-          // Se a data de fechamento já passou, fechar a fatura
-          if (today > closingDate) {
-            const endDateStr = closingDate.toISOString().split('T')[0];
-            
-            try {
-              // Buscar faturas existentes para este cartão e período
-              const allInvoices = await storage.getCreditCardInvoices();
-              // Como não temos campo endDate no schema, vamos usar dueDate para verificar
-              const dueDate = new Date(year, month + 1, card.dueDay).toISOString().split('T')[0];
-              const existingInvoice = allInvoices.find(inv => 
-                inv.creditCardId === card.id && inv.dueDate === dueDate
-              );
-              
-              // Se não existe fatura ou está pendente, criar/atualizar para fechada
-              if (!existingInvoice) {
-                // Buscar transações para calcular valor da fatura
-                const startDate = new Date(year, month - 1, closingDay + 1);
-                const endDate = closingDate;
-                
-                const transactions = await storage.getTransactionsByDateRange(
-                  startDate.toISOString().split('T')[0],
-                  endDate.toISOString().split('T')[0]
-                );
-                
-                const cardTransactions = transactions.filter(t => 
-                  t.creditCardId === card.id && t.type === 'expense'
-                );
-                
-                                 // 🔥 NOVA LÓGICA: Buscar assinaturas que devem aparecer na fatura
-                 const subscriptions = await storage.getSubscriptions();
-                 const cardSubscriptions = subscriptions.filter(s => {
-                   if (s.creditCardId !== card.id || s.paymentMethod !== 'credito') {
-                     return false;
-                   }
-                   
-                   // Assinatura deve aparecer se:
-                   // 1. Está ativa E foi criada antes do início do período da fatura, OU
-                   // 2. Está ativa E foi criada durante o período da fatura
-                   
-                   const subscriptionCreated = new Date(s.createdAt || new Date());
-                   const closingDay = card.closingDay || 1;
-                   
-                   // Calcular período da fatura
-                   let invoiceStartDate: Date;
-                   let invoiceEndDate: Date;
-                   
-                   if (closingDay === 1) {
-                     invoiceStartDate = new Date(year, month, 1);
-                     invoiceEndDate = new Date(year, month + 1, 0);
-                   } else {
-                     invoiceStartDate = new Date(year, month - 1, closingDay);
-                     invoiceEndDate = new Date(year, month, closingDay - 1);
-                   }
-                   
-                   // REGRA 1: Assinatura criada antes do início do período da fatura
-                   if (subscriptionCreated.getTime() <= invoiceStartDate.getTime()) {
-                     return s.isActive;
-                   }
-                   
-                   // REGRA 2: Assinatura criada durante o período da fatura
-                   if (subscriptionCreated.getTime() >= invoiceStartDate.getTime() && 
-                       subscriptionCreated.getTime() <= invoiceEndDate.getTime()) {
-                     return s.isActive;
-                   }
-                   
-                   return false;
-                 });
-                
-                const totalAmount = cardTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0) +
-                                 cardSubscriptions.reduce((sum, s) => sum + parseFloat(s.amount), 0);
-                
-                        // CORREÇÃO: Criar fatura fechada automaticamente - SEMPRE com valores corretos
-        if (totalAmount > 0) {
-          await storage.createCreditCardInvoice({
-            creditCardId: card.id,
-            dueDate: new Date(year, month + 1, card.dueDay).toISOString().split('T')[0],
-            totalAmount: totalAmount.toString(),
-            paidAmount: "0", // SEMPRE ZERO
-            status: "closed", // ⚡️ STATUS FECHADO AUTOMATICAMENTE
-          });
-          console.log(`🔥 Fatura automática criada: Total R$ ${totalAmount.toFixed(2)}, Pago R$ 0.00`);
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        const closingDay = card.closingDay || 1;
+        
+        // Calcular período da fatura atual
+        let invoiceStartDate: Date;
+        let invoiceEndDate: Date;
+        
+        if (closingDay === 1) {
+          invoiceStartDate = new Date(currentYear, currentMonth, 1);
+          invoiceEndDate = new Date(currentYear, currentMonth + 1, 0);
+        } else {
+          invoiceStartDate = new Date(currentYear, currentMonth - 1, closingDay);
+          invoiceEndDate = new Date(currentYear, currentMonth, closingDay - 1);
         }
-              } else if (existingInvoice.status === 'pending') {
-                // Atualizar fatura pendente para fechada
-                await storage.updateCreditCardInvoice(existingInvoice.id, {
-                  status: "closed"
-                });
-              }
-            } catch (invoiceError) {
-              console.log(`Erro ao processar fatura do cartão ${card.name}:`, invoiceError);
-            }
+        
+        // Verificar se a fatura atual já fechou
+        if (today > invoiceEndDate) {
+          // 🔥 NOVA LÓGICA: Usar sistema de limite inteligente para fechar fatura
+          const creditCardService = new CreditCardService(storage);
+          try {
+            await creditCardService.calculateSmartLimit(card.id);
+            console.log(`🔥 Fatura fechada automaticamente para cartão ${card.name}`);
+          } catch (error) {
+            console.error(`Erro ao fechar fatura do cartão ${card.name}:`, error);
           }
         }
       }
     } catch (error) {
-      console.log('Erro no fechamento automático de faturas:', error);
+      console.error('Erro no fechamento automático de faturas:', error);
     }
   };
 
@@ -1212,10 +1135,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ⚡️ EXECUTAR FECHAMENTO AUTOMÁTICO ANTES DE RETORNAR CARTÕES
       await autoCloseInvoices();
       
-      // ⚡️ RECALCULAR LIMITE DE TODOS OS CARTÕES
+      // 🔥 NOVA LÓGICA: Usar sistema de limite inteligente para todos os cartões
       const creditCards = await storage.getCreditCards();
+      const creditCardService = new CreditCardService(storage);
+      
+      // Calcular limite inteligente para cada cartão
       for (const card of creditCards) {
-        await recalculateCreditCardLimit(card.id);
+        try {
+          await creditCardService.calculateSmartLimit(card.id);
+        } catch (error) {
+          console.error(`Erro ao calcular limite inteligente para cartão ${card.id}:`, error);
+        }
       }
       
       // Buscar cartões atualizados
@@ -1259,6 +1189,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedCard);
     } catch (error) {
       res.status(500).json({ message: "Failed to update credit card" });
+    }
+  });
+
+  // 🔥 NOVA ROTA: Obter limite inteligente de um cartão específico
+  app.get("/api/credit-cards/:id/smart-limit", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const creditCard = await storage.getCreditCardById(id);
+      if (!creditCard) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Cartão de crédito não encontrado" 
+        });
+      }
+
+      // Usar o serviço para calcular o limite inteligente
+      const creditCardService = new CreditCardService(storage);
+      const smartLimit = await creditCardService.calculateSmartLimit(id);
+      
+      res.json({
+        success: true,
+        data: {
+          creditCard: {
+            id: creditCard.id,
+            name: creditCard.name,
+            limit: creditCard.limit,
+            currentUsed: smartLimit.currentUsed,
+            availableLimit: smartLimit.availableLimit
+          },
+          invoice: {
+            status: smartLimit.invoiceStatus,
+            totalAmount: smartLimit.currentInvoiceAmount,
+            paidAmount: smartLimit.paidAmount,
+            remainingBalance: smartLimit.remainingBalance
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao calcular limite inteligente:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Erro ao calcular limite inteligente" 
+      });
     }
   });
 
@@ -1641,6 +1615,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // 🔥 NOVAS ROTAS DE ASSINATURAS
   app.use("/api/subscriptions", subscriptionRoutes);
+
+  // 🔥 ROTA DE INVOICE PARA TESTAR A FUNÇÃO CORRIGIDA
+  app.get("/api/credit-cards/:creditCardId/invoice", async (req, res) => {
+    try {
+      const { creditCardId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: "startDate e endDate são obrigatórios" });
+      }
+      
+      const creditCardService = new CreditCardService(storage);
+      const invoice = await creditCardService.calculateInvoice(
+        creditCardId,
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+      
+      res.json(invoice);
+    } catch (error) {
+      console.error("Erro ao calcular fatura:", error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

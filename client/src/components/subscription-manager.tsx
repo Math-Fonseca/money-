@@ -171,58 +171,25 @@ export default function SubscriptionManager() {
   });
 
   const createSubscriptionMutation = useMutation({
-    mutationFn: (data: SubscriptionFormData) => {
-      const formattedData = {
-        ...data,
-        amount: parseFloat(data.amount.replace(/[^\d,.-]/g, '').replace(',', '.')).toString(),
-        categoryId: data.categoryId === "none" ? null : data.categoryId,
-      };
-
-      if (editingSubscription) {
-        return apiRequest(`/api/subscriptions/${editingSubscription.id}`, "PUT", formattedData);
-      } else {
-        return apiRequest("/api/subscriptions", "POST", formattedData);
-      }
-    },
+    mutationFn: (data: SubscriptionFormData) =>
+      apiRequest("/api/subscriptions", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
-      setIsDialogOpen(false);
-      setEditingSubscription(null);
-      form.reset();
       toast({
-        title: editingSubscription ? "Assinatura atualizada!" : "Assinatura cadastrada!",
-        description: editingSubscription ? "Assinatura atualizada com sucesso." : "Assinatura adicionada com sucesso.",
+        title: "Sucesso",
+        description: editingSubscription
+          ? "Assinatura atualizada com sucesso!"
+          : "Assinatura cadastrada com sucesso!",
       });
+      closeDialog();
     },
     onError: () => {
       toast({
         title: "Erro",
         description: "Falha ao cadastrar a assinatura.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const toggleSubscriptionMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      apiRequest(`/api/subscriptions/${id}/toggle`, "PUT"),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
-      toast({
-        title: "Assinatura atualizada",
-        description: "Status da assinatura foi alterado.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar a assinatura.",
         variant: "destructive",
       });
     },
@@ -249,13 +216,59 @@ export default function SubscriptionManager() {
     },
   });
 
+  // 🔥 MUTATION DE TOGGLE RESTAURADA: Ativar/Desativar assinatura
+  const toggleSubscriptionMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/subscriptions/${id}/toggle`, "PUT"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
+      toast({
+        title: "Status alterado",
+        description: "Status da assinatura alterado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao alterar status da assinatura.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: SubscriptionFormData) => {
+    const formattedData = {
+      ...data,
+      amount: parseFloat(data.amount.replace(/[^\d,.-]/g, '').replace(',', '.')).toString(),
+      categoryId: data.categoryId === "none" ? undefined : data.categoryId,
+    };
+
     if (editingSubscription) {
-      // Atualizando assinatura existente usando a mesma mutation
-      createSubscriptionMutation.mutate(data);
+      // Atualizando assinatura existente
+      apiRequest(`/api/subscriptions/${editingSubscription.id}`, "PUT", formattedData)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
+          toast({
+            title: "Sucesso",
+            description: "Assinatura atualizada com sucesso!",
+          });
+          closeDialog();
+        })
+        .catch(() => {
+          toast({
+            title: "Erro",
+            description: "Falha ao atualizar a assinatura.",
+            variant: "destructive",
+          });
+        });
     } else {
       // Criando nova assinatura
-      createSubscriptionMutation.mutate(data);
+      createSubscriptionMutation.mutate(formattedData);
     }
   };
 
@@ -612,15 +625,6 @@ export default function SubscriptionManager() {
                             <CardTitle className="text-lg">{subscription.name}</CardTitle>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Switch
-                              checked={subscription.isActive}
-                              onCheckedChange={(checked) =>
-                                toggleSubscriptionMutation.mutate({
-                                  id: subscription.id,
-                                  isActive: checked,
-                                })
-                              }
-                            />
                             <Button
                               variant="ghost"
                               size="sm"
@@ -636,6 +640,14 @@ export default function SubscriptionManager() {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-600">Ativa</span>
+                              <Switch
+                                checked={subscription.isActive}
+                                onCheckedChange={() => toggleSubscriptionMutation.mutate(subscription.id)}
+                                disabled={toggleSubscriptionMutation.isPending}
+                              />
+                            </div>
                           </div>
                         </div>
                         <CardDescription>{serviceInfo.name}</CardDescription>
@@ -697,15 +709,6 @@ export default function SubscriptionManager() {
                             <CardTitle className="text-lg">{subscription.name}</CardTitle>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Switch
-                              checked={subscription.isActive}
-                              onCheckedChange={(checked) =>
-                                toggleSubscriptionMutation.mutate({
-                                  id: subscription.id,
-                                  isActive: checked,
-                                })
-                              }
-                            />
                             <Button
                               variant="ghost"
                               size="sm"
@@ -721,6 +724,14 @@ export default function SubscriptionManager() {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-600">Ativa</span>
+                              <Switch
+                                checked={subscription.isActive}
+                                onCheckedChange={() => toggleSubscriptionMutation.mutate(subscription.id)}
+                                disabled={toggleSubscriptionMutation.isPending}
+                              />
+                            </div>
                           </div>
                         </div>
                         <CardDescription>{serviceInfo.name}</CardDescription>
