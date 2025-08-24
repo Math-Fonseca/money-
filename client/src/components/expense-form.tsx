@@ -444,12 +444,6 @@ export default function ExpenseForm({ categories, selectedMonth, selectedYear }:
                             <span>Cartão de Débito</span>
                           </div>
                         </SelectItem>
-                        <SelectItem value="credito">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">💳</span>
-                            <span>Cartão de Crédito</span>
-                          </div>
-                        </SelectItem>
                         <SelectItem value="dinheiro">
                           <div className="flex items-center gap-2">
                             <span className="text-lg">💵</span>
@@ -859,6 +853,12 @@ export default function ExpenseForm({ categories, selectedMonth, selectedYear }:
                     <div className="flex items-center gap-2">
                       <span className="text-lg">📱</span>
                       <span>PIX</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="debito">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">💳</span>
+                      <span>Cartão de Débito</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="transferencia">

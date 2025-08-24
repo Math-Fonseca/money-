@@ -171,7 +171,7 @@ export default function WelcomeTutorial({ isOpen, onClose }: WelcomeTutorialProp
   const currentStepData = steps[currentStep];
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">

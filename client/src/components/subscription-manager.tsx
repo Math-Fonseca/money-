@@ -135,9 +135,14 @@ export default function SubscriptionManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: subscriptions = [] } = useQuery<Subscription[]>({
+  const { data: subscriptionsResponse } = useQuery<{
+    success: boolean;
+    data: Subscription[];
+  }>({
     queryKey: ["/api/subscriptions"],
   });
+
+  const subscriptions = subscriptionsResponse?.data || [];
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
@@ -203,7 +208,7 @@ export default function SubscriptionManager() {
 
   const toggleSubscriptionMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      apiRequest(`/api/subscriptions/${id}`, "PUT", { isActive }),
+      apiRequest(`/api/subscriptions/${id}/toggle`, "PUT"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });

@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import subscriptionRoutes from "./subscription-routes";
 
 // National and SP holidays (fixed and calculated dates)
 function getBrazilianHolidays(year: number): Date[] {
@@ -1054,10 +1055,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   t.creditCardId === card.id && t.type === 'expense'
                 );
                 
-                const subscriptions = await storage.getActiveSubscriptions();
-                const cardSubscriptions = subscriptions.filter(s => 
-                  s.creditCardId === card.id && s.paymentMethod === 'credito'
-                );
+                                 // 🔥 NOVA LÓGICA: Buscar assinaturas que devem aparecer na fatura
+                 const subscriptions = await storage.getSubscriptions();
+                 const cardSubscriptions = subscriptions.filter(s => {
+                   if (s.creditCardId !== card.id || s.paymentMethod !== 'credito') {
+                     return false;
+                   }
+                   
+                   // Assinatura deve aparecer se:
+                   // 1. Está ativa E foi criada antes do início do período da fatura, OU
+                   // 2. Está ativa E foi criada durante o período da fatura
+                   
+                   const subscriptionCreated = new Date(s.createdAt || new Date());
+                   const closingDay = card.closingDay || 1;
+                   
+                   // Calcular período da fatura
+                   let invoiceStartDate: Date;
+                   let invoiceEndDate: Date;
+                   
+                   if (closingDay === 1) {
+                     invoiceStartDate = new Date(year, month, 1);
+                     invoiceEndDate = new Date(year, month + 1, 0);
+                   } else {
+                     invoiceStartDate = new Date(year, month - 1, closingDay);
+                     invoiceEndDate = new Date(year, month, closingDay - 1);
+                   }
+                   
+                   // REGRA 1: Assinatura criada antes do início do período da fatura
+                   if (subscriptionCreated.getTime() <= invoiceStartDate.getTime()) {
+                     return s.isActive;
+                   }
+                   
+                   // REGRA 2: Assinatura criada durante o período da fatura
+                   if (subscriptionCreated.getTime() >= invoiceStartDate.getTime() && 
+                       subscriptionCreated.getTime() <= invoiceEndDate.getTime()) {
+                     return s.isActive;
+                   }
+                   
+                   return false;
+                 });
                 
                 const totalAmount = cardTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0) +
                                  cardSubscriptions.reduce((sum, s) => sum + parseFloat(s.amount), 0);
@@ -1090,18 +1126,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // ⚡️ FUNÇÃO PARA RECALCULAR LIMITE USADO DO CARTÃO (SIMPLIFICADA)
+  const recalculateCreditCardLimit = async (creditCardId: string) => {
+    try {
+      const creditCard = await storage.getCreditCardById(creditCardId);
+      if (!creditCard) return;
+      
+      const today = new Date();
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+      const closingDay = creditCard.closingDay || 1;
+      
+      // Calcular período da fatura atual
+      let invoiceStartDate: Date;
+      let invoiceEndDate: Date;
+      
+      if (closingDay === 1) {
+        invoiceStartDate = new Date(currentYear, currentMonth, 1);
+        invoiceEndDate = new Date(currentYear, currentMonth + 1, 0);
+      } else {
+        invoiceStartDate = new Date(currentYear, currentMonth - 1, closingDay);
+        invoiceEndDate = new Date(currentYear, currentMonth, closingDay - 1);
+      }
+      
+      // Buscar transações da fatura atual
+      const transactions = await storage.getTransactions();
+      const currentInvoiceTransactions = transactions.filter(t => 
+        t.creditCardId === creditCardId && 
+        t.type === 'expense' &&
+        t.date >= invoiceStartDate.toISOString().split('T')[0] &&
+        t.date <= invoiceEndDate.toISOString().split('T')[0]
+      );
+      
+      // Buscar assinaturas da fatura atual
+      const subscriptions = await storage.getSubscriptions();
+      const currentInvoiceSubscriptions = subscriptions.filter(s => {
+        if (s.creditCardId !== creditCardId || s.paymentMethod !== 'credito') {
+          return false;
+        }
+        
+        const subscriptionCreated = new Date(s.createdAt || new Date());
+        
+        // Assinatura deve aparecer se:
+        // 1. Está ativa E foi criada antes do início da fatura, OU
+        // 2. Está ativa E foi criada durante a fatura
+        if (subscriptionCreated.getTime() <= invoiceStartDate.getTime()) {
+          return s.isActive;
+        }
+        
+        if (subscriptionCreated.getTime() >= invoiceStartDate.getTime() && 
+            subscriptionCreated.getTime() <= invoiceEndDate.getTime()) {
+          return s.isActive;
+        }
+        
+        return false;
+      });
+      
+      // Calcular total
+      const transactionsTotal = currentInvoiceTransactions.reduce((sum, t) => 
+        sum + parseFloat(t.amount), 0
+      );
+      
+      const subscriptionsTotal = currentInvoiceSubscriptions.reduce((sum, s) => 
+        sum + parseFloat(s.amount), 0
+      );
+      
+      const totalUsed = transactionsTotal + subscriptionsTotal;
+      
+      // Atualizar o cartão
+      await storage.updateCreditCard(creditCardId, {
+        currentUsed: totalUsed.toFixed(2)
+      });
+      
+      console.log(`🔥 Limite recalculado para cartão ${creditCard.name}: R$ ${totalUsed.toFixed(2)}`);
+      console.log(`   - Transações: R$ ${transactionsTotal.toFixed(2)}`);
+      console.log(`   - Assinaturas: R$ ${subscriptionsTotal.toFixed(2)}`);
+    } catch (error) {
+      console.error('Erro ao recalcular limite do cartão:', error);
+    }
+  };
+
   // Credit Cards
   app.get("/api/credit-cards", async (req, res) => {
     try {
       // ⚡️ EXECUTAR FECHAMENTO AUTOMÁTICO ANTES DE RETORNAR CARTÕES
       await autoCloseInvoices();
       
+      // ⚡️ RECALCULAR LIMITE DE TODOS OS CARTÕES
       const creditCards = await storage.getCreditCards();
-      console.log('Credit cards found:', creditCards.length);
-      console.log('Credit cards data:', creditCards);
+      for (const card of creditCards) {
+        await recalculateCreditCardLimit(card.id);
+      }
+      
+      // Buscar cartões atualizados
+      const updatedCreditCards = await storage.getCreditCards();
+      console.log('Credit cards found:', updatedCreditCards.length);
+      console.log('Credit cards data:', updatedCreditCards);
       
       // Retornar no formato esperado pelo frontend
-      res.json({ success: true, data: creditCards });
+      res.json({ success: true, data: updatedCreditCards });
     } catch (error) {
       console.error('Error fetching credit cards:', error);
       res.status(500).json({ message: "Failed to fetch credit cards" });
@@ -1174,11 +1297,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`- ${t.description}: R$ ${t.amount} em ${t.date} (Parcela: ${t.installmentNumber}/${t.installments})`);
       });
       
-      // Buscar apenas assinaturas ATIVAS do cartão
-      const subscriptions = await storage.getActiveSubscriptions();
-      const cardSubscriptions = subscriptions.filter(s => 
-        s.paymentMethod === 'credito' && s.creditCardId === cardId && s.isActive
-      );
+             // 🔥 NOVA LÓGICA: Buscar assinaturas que devem aparecer na fatura
+       const subscriptions = await storage.getSubscriptions();
+       const cardSubscriptions = subscriptions.filter(s => {
+         if (s.paymentMethod !== 'credito' || s.creditCardId !== cardId) {
+           return false;
+         }
+         
+         // Assinatura deve aparecer se:
+         // 1. Está ativa E foi criada antes do início do período da fatura, OU
+         // 2. Está ativa E foi criada durante o período da fatura
+         
+         const subscriptionCreated = new Date(s.createdAt || new Date());
+         const periodStart = new Date(startDate);
+         const periodEnd = new Date(endDate);
+         
+         // REGRA 1: Assinatura criada antes do início do período da fatura
+         if (subscriptionCreated.getTime() <= periodStart.getTime()) {
+           return s.isActive;
+         }
+         
+         // REGRA 2: Assinatura criada durante o período da fatura
+         if (subscriptionCreated.getTime() >= periodStart.getTime() && 
+             subscriptionCreated.getTime() <= periodEnd.getTime()) {
+           return s.isActive;
+         }
+         
+         return false;
+       });
       
       // Converter assinaturas em transações virtuais para a fatura
       const subscriptionTransactions = cardSubscriptions.map(sub => {
@@ -1491,114 +1637,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Subscriptions
-  app.get("/api/subscriptions", async (req, res) => {
-    try {
-      const { active } = req.query;
-      
-      let subscriptions;
-      if (active === 'true') {
-        subscriptions = await storage.getActiveSubscriptions();
-      } else {
-        subscriptions = await storage.getSubscriptions();
-      }
-      
-      res.json(subscriptions);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch subscriptions" });
-    }
-  });
+  // 🔥 ROTAS DE ASSINATURAS REMOVIDAS - AGORA EM subscription-routes.ts
 
-  // Get subscriptions for credit card in specific period - LÓGICA DEFINITIVAMENTE CORRIGIDA
-  app.get("/api/subscriptions/credit-card/:creditCardId/:startDate/:endDate", async (req, res) => {
-    try {
-      const { creditCardId, startDate, endDate } = req.params;
-      const subscriptions = await storage.getSubscriptions();
-      
-      // ⚡️ LÓGICA CORRETA: Apenas assinaturas ativas criadas ANTES do fim do período
-      const creditCardSubscriptions = subscriptions.filter(subscription => {
-        if (subscription.creditCardId !== creditCardId || 
-            subscription.paymentMethod !== 'credito' || 
-            !subscription.isActive) {
-          return false;
-        }
-        
-        // ⚡️ CRUCIAL: Assinatura só aparece nas faturas A PARTIR do mês de criação
-        const subscriptionCreated = new Date(subscription.createdAt || new Date());
-        const periodStart = new Date(startDate);
-        
-        // Se a assinatura foi criada DEPOIS do início deste período, não incluir
-        return subscriptionCreated.getTime() <= periodStart.getTime();
-      });
-
-      // ⚡️ TRANSFORMAR EM FORMATO DE TRANSAÇÃO
-      const subscriptionTransactions = creditCardSubscriptions.map(subscription => ({
-        id: `subscription-${subscription.id}`,
-        description: `${subscription.name}`,
-        amount: subscription.amount,
-        date: startDate,
-        type: 'expense' as const,
-        categoryId: subscription.categoryId,
-        paymentMethod: 'credito',
-        creditCardId: subscription.creditCardId,
-        isSubscription: true,
-        subscriptionId: subscription.id,
-        service: subscription.service,
-        isRecurring: 'Recorrente'
-      }));
-      res.json(subscriptionTransactions);
-    } catch (error) {
-      console.error("Error fetching credit card subscriptions:", error);
-      res.status(500).json({ message: "Failed to fetch credit card subscriptions" });
-    }
-  });
-
-  app.post("/api/subscriptions", async (req, res) => {
-    try {
-      const subscription = insertSubscriptionSchema.parse(req.body);
-      const newSubscription = await storage.createSubscription(subscription);
-      res.status(201).json(newSubscription);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid subscription data", errors: error.errors });
-      } else {
-        res.status(500).json({ message: "Failed to create subscription" });
-      }
-    }
-  });
-
-  app.put("/api/subscriptions/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const updates = req.body;
-      const updatedSubscription = await storage.updateSubscription(id, updates);
-      
-      if (!updatedSubscription) {
-        res.status(404).json({ message: "Subscription not found" });
-        return;
-      }
-      
-      res.json(updatedSubscription);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update subscription" });
-    }
-  });
-
-  app.delete("/api/subscriptions/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const deleted = await storage.deleteSubscription(id);
-      
-      if (!deleted) {
-        res.status(404).json({ message: "Subscription not found" });
-        return;
-      }
-      
-      res.json({ message: "Subscription deleted successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete subscription" });
-    }
-  });
+  // 🔥 NOVAS ROTAS DE ASSINATURAS
+  app.use("/api/subscriptions", subscriptionRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
