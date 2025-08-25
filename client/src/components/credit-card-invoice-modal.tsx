@@ -170,11 +170,8 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
   console.log(`🔍 CreditCard ID:`, creditCard?.id);
   console.log(`🔍 Modal aberto:`, isOpen);
 
-  // Fetch subscriptions for current invoice period - CORRIGIDO URL
-  const { data: subscriptions = [] } = useQuery({
-    queryKey: [`/api/subscriptions/credit-card/${creditCard?.id}/${format(startDate, 'yyyy-MM-dd')}/${format(endDate, 'yyyy-MM-dd')}`],
-    enabled: !!creditCard && isOpen,
-  });
+  // Não buscar assinaturas automaticamente - agora são incluídas manualmente pelo usuário
+  const subscriptions: any[] = [];
 
   // Fetch invoice data - CORRIGIDO URL
   const { data: invoice = null } = useQuery<CreditCardInvoice | null>({
@@ -225,17 +222,27 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
   // Payment mutation
   const payInvoiceMutation = useMutation({
     mutationFn: async (data: { invoiceId: string; amount: string }) => {
-      return await apiRequest(`/api/credit-card-invoices/${data.invoiceId}/pay`, "PUT", { amount: data.amount });
+      const response = await apiRequest(`/api/credit-card-invoices/${data.invoiceId}/pay`, "PUT", { amount: data.amount });
+      const responseData = await response.json();
+      
+      if (!responseData.success) {
+        throw new Error(responseData.message || 'Erro ao registrar pagamento');
+      }
+      
+      return responseData;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Pagamento registrado",
-        description: "O pagamento da fatura foi registrado com sucesso!",
+        description: data.message || "O pagamento da fatura foi registrado com sucesso!",
       });
-      // CORREÇÃO: Invalidar todas as queries relacionadas para forçar atualização
+      
+      // Invalidar todas as queries relacionadas para forçar atualização
       queryClient.invalidateQueries({ queryKey: ["/api/credit-card-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      
       // Invalidar especificamente a query desta fatura
       if (creditCard?.id) {
         queryClient.invalidateQueries({
@@ -245,6 +252,7 @@ export default function CreditCardInvoiceModal({ creditCard, isOpen, onClose }: 
           queryKey: [`/api/transactions/credit-card/${creditCard.id}/${format(startDate, 'yyyy-MM-dd')}/${format(endDate, 'yyyy-MM-dd')}`]
         });
       }
+      
       setPaymentAmount("");
     },
     onError: () => {

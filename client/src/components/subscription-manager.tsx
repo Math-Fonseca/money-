@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Smartphone, Trash2, Calendar, Pencil, CreditCard } from "lucide-react";
+import { Plus, Smartphone, Trash2, Calendar, Pencil, CreditCard, Receipt } from "lucide-react";
 
 // Form schema para assinaturas
 const subscriptionFormSchema = z.object({
@@ -129,6 +129,22 @@ interface Category {
   type: string;
 }
 
+// Função para incluir assinatura na fatura
+const includeSubscriptionInInvoice = async (subscriptionId: string) => {
+  try {
+    const response = await apiRequest(`/api/subscriptions/${subscriptionId}/include-in-invoice`, 'POST');
+    const responseData = await response.json();
+    
+    if (responseData.success) {
+      return responseData.data;
+    } else {
+      throw new Error(responseData.message || 'Erro ao incluir assinatura na fatura');
+    }
+  } catch (error) {
+    throw error;
+  }
+};
+
 export default function SubscriptionManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
@@ -238,6 +254,26 @@ export default function SubscriptionManager() {
     },
   });
 
+  // Mutation para incluir assinatura na fatura
+  const includeInInvoiceMutation = useMutation({
+    mutationFn: includeSubscriptionInInvoice,
+    onSuccess: (data) => {
+      toast({
+        title: "✅ Sucesso!",
+        description: "Assinatura incluída na fatura atual com sucesso!",
+      });
+      queryClient.invalidateQueries({ queryKey: ['credit-cards'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Erro!",
+        description: error.message || "Erro ao incluir assinatura na fatura",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: SubscriptionFormData) => {
     const formattedData = {
       ...data,
@@ -337,6 +373,13 @@ export default function SubscriptionManager() {
 
   const activeSubscriptions = subscriptions.filter(sub => sub.isActive);
   const inactiveSubscriptions = subscriptions.filter(sub => !sub.isActive);
+
+  // Função para verificar se a assinatura pode ser incluída na fatura
+  const canIncludeInInvoice = (subscription: any) => {
+    return subscription.paymentMethod === 'credito' && 
+           subscription.creditCardId && 
+           subscription.isActive;
+  };
 
   return (
     <div className="space-y-6">
@@ -681,6 +724,22 @@ export default function SubscriptionManager() {
                               <Badge variant="outline">
                                 {categoryInfo.icon} {categoryInfo.name}
                               </Badge>
+                            </div>
+                          )}
+
+                          {/* Botão para incluir na fatura (apenas para cartão de crédito) */}
+                          {canIncludeInInvoice(subscription) && (
+                            <div className="pt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full"
+                                onClick={() => includeInInvoiceMutation.mutate(subscription.id)}
+                                disabled={includeInInvoiceMutation.isPending}
+                              >
+                                <Receipt className="h-4 w-4 mr-2" />
+                                {includeInInvoiceMutation.isPending ? "Incluindo..." : "Incluir na fatura"}
+                              </Button>
                             </div>
                           )}
                         </div>

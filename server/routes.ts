@@ -803,7 +803,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Somar transações relevantes deste cartão
-        transactionExpenses += relevantCardTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const cardExpenses = relevantCardTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        transactionExpenses += cardExpenses;
+        
+        console.log(`Cartão ${card.name}: R$ ${cardExpenses.toFixed(2)} em transações para o mês ${targetMonth}/${targetYear}`);
+        
+        // Adicionar despesas de cartão de crédito por categoria para o dashboard
+        relevantCardTransactions.forEach(t => {
+          if (t.categoryId) {
+            expensesByCategory[t.categoryId] = (expensesByCategory[t.categoryId] || 0) + parseFloat(t.amount);
+            console.log(`Added credit card transaction to category ${t.categoryId}: R$ ${t.amount}`);
+          }
+        });
       }
       
       // Calcular despesas das assinaturas ativas no mês - aplicando lógica de cartão de crédito quando necessário
@@ -834,6 +845,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // A assinatura deve ser contabilizada neste mês se a data de cobrança se alinha
             subscriptionExpenses += parseFloat(sub.amount);
+            
+            // Adicionar assinatura de cartão de crédito por categoria para o dashboard
+            if (sub.categoryId) {
+              expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
+              console.log(`Added credit card subscription to category ${sub.categoryId}: R$ ${sub.amount}`);
+            }
           }
         } else {
           // Assinaturas não pagas via cartão de crédito são contabilizadas normalmente
@@ -851,16 +868,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Calculating expenses by category for:', { targetMonth, targetYear });
       console.log('Total transactions found:', transactions.length);
       
-      // Adicionar TODAS as transações de despesa do mês atual (independente do método de pagamento)
+      // Adicionar apenas transações de despesa que NÃO são de cartão de crédito
+      // As despesas de cartão de crédito já foram calculadas acima na lógica de ciclo de faturamento
       const currentMonthTransactions = transactions.filter(t => {
         if (t.type !== 'expense') return false;
+        
+        // EXCLUIR transações de cartão de crédito - elas já foram contabilizadas acima
+        if (t.creditCardId) {
+          console.log('Excluding credit card transaction from general expenses:', {
+            id: t.id,
+            description: t.description,
+            amount: t.amount,
+            creditCardId: t.creditCardId
+          });
+          return false;
+        }
+        
         const transactionDate = new Date(t.date);
         const transactionMonth = transactionDate.getMonth() + 1;
         const transactionYear = transactionDate.getFullYear();
         const matches = transactionMonth === targetMonth && transactionYear === targetYear;
         
         if (matches) {
-          console.log('Found expense transaction:', {
+          console.log('Found non-credit expense transaction:', {
             id: t.id,
             description: t.description,
             amount: t.amount,
@@ -893,10 +923,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // As transações de cartão já foram incluídas acima junto com todas as outras
       
-      // Adicionar assinaturas ativas por categoria
+      // Adicionar assinaturas ativas por categoria (apenas as que não são de cartão de crédito)
+      // As assinaturas de cartão de crédito já foram contabilizadas na lógica de transações acima
       subscriptions.forEach(sub => {
+        // EXCLUIR assinaturas de cartão de crédito - elas já foram contabilizadas acima
+        if (sub.paymentMethod === 'credito' && sub.creditCardId) {
+          console.log('Excluding credit card subscription from general expenses:', {
+            id: sub.id,
+            name: sub.name,
+            amount: sub.amount,
+            creditCardId: sub.creditCardId
+          });
+          return;
+        }
+        
         if (sub.categoryId) {
           expensesByCategory[sub.categoryId] = (expensesByCategory[sub.categoryId] || 0) + parseFloat(sub.amount);
+          console.log('Added subscription to category:', {
+            categoryId: sub.categoryId,
+            subscriptionName: sub.name,
+            amount: sub.amount,
+            totalForCategory: expensesByCategory[sub.categoryId]
+          });
         }
       });
       
@@ -1081,49 +1129,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         t.date <= invoiceEndDate.toISOString().split('T')[0]
       );
       
-      // Buscar assinaturas da fatura atual
-      const subscriptions = await storage.getSubscriptions();
-      const currentInvoiceSubscriptions = subscriptions.filter(s => {
-        if (s.creditCardId !== creditCardId || s.paymentMethod !== 'credito') {
-          return false;
-        }
-        
-        const subscriptionCreated = new Date(s.createdAt || new Date());
-        
-        // Assinatura deve aparecer se:
-        // 1. Está ativa E foi criada antes do início da fatura, OU
-        // 2. Está ativa E foi criada durante a fatura
-        if (subscriptionCreated.getTime() <= invoiceStartDate.getTime()) {
-          return s.isActive;
-        }
-        
-        if (subscriptionCreated.getTime() >= invoiceStartDate.getTime() && 
-            subscriptionCreated.getTime() <= invoiceEndDate.getTime()) {
-          return s.isActive;
-        }
-        
-        return false;
-      });
-      
-      // Calcular total
+      // Calcular total apenas das transações reais
       const transactionsTotal = currentInvoiceTransactions.reduce((sum, t) => 
         sum + parseFloat(t.amount), 0
       );
       
-      const subscriptionsTotal = currentInvoiceSubscriptions.reduce((sum, s) => 
-        sum + parseFloat(s.amount), 0
-      );
-      
-      const totalUsed = transactionsTotal + subscriptionsTotal;
-      
-      // Atualizar o cartão
+      // Atualizar o cartão com apenas transações reais
       await storage.updateCreditCard(creditCardId, {
-        currentUsed: totalUsed.toFixed(2)
+        currentUsed: transactionsTotal.toFixed(2)
       });
       
-      console.log(`🔥 Limite recalculado para cartão ${creditCard.name}: R$ ${totalUsed.toFixed(2)}`);
+      console.log(`🔥 Limite recalculado para cartão ${creditCard.name}: R$ ${transactionsTotal.toFixed(2)}`);
       console.log(`   - Transações: R$ ${transactionsTotal.toFixed(2)}`);
-      console.log(`   - Assinaturas: R$ ${subscriptionsTotal.toFixed(2)}`);
     } catch (error) {
       console.error('Erro ao recalcular limite do cartão:', error);
     }
@@ -1271,61 +1288,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`- ${t.description}: R$ ${t.amount} em ${t.date} (Parcela: ${t.installmentNumber}/${t.installments})`);
       });
       
-             // 🔥 NOVA LÓGICA: Buscar assinaturas que devem aparecer na fatura
-       const subscriptions = await storage.getSubscriptions();
-       const cardSubscriptions = subscriptions.filter(s => {
-         if (s.paymentMethod !== 'credito' || s.creditCardId !== cardId) {
-           return false;
-         }
-         
-         // Assinatura deve aparecer se:
-         // 1. Está ativa E foi criada antes do início do período da fatura, OU
-         // 2. Está ativa E foi criada durante o período da fatura
-         
-         const subscriptionCreated = new Date(s.createdAt || new Date());
-         const periodStart = new Date(startDate);
-         const periodEnd = new Date(endDate);
-         
-         // REGRA 1: Assinatura criada antes do início do período da fatura
-         if (subscriptionCreated.getTime() <= periodStart.getTime()) {
-           return s.isActive;
-         }
-         
-         // REGRA 2: Assinatura criada durante o período da fatura
-         if (subscriptionCreated.getTime() >= periodStart.getTime() && 
-             subscriptionCreated.getTime() <= periodEnd.getTime()) {
-           return s.isActive;
-         }
-         
-         return false;
-       });
-      
-      // Converter assinaturas em transações virtuais para a fatura
-      const subscriptionTransactions = cardSubscriptions.map(sub => {
-        // Calcular a data da próxima cobrança baseada no período da fatura
-        const startDateObj = new Date(startDate);
-        const billingDate = Math.min(sub.billingDate, new Date(startDateObj.getFullYear(), startDateObj.getMonth() + 1, 0).getDate());
-        const transactionDate = new Date(startDateObj.getFullYear(), startDateObj.getMonth(), billingDate);
-        
-        return {
-          id: `subscription-${sub.id}`,
-          description: `${sub.name} (Assinatura)`,
-          amount: sub.amount,
-          date: transactionDate.toISOString().split('T')[0],
-          type: 'expense' as const,
-          categoryId: sub.categoryId,
-          creditCardId: cardId,
-          isSubscription: true,
-          subscriptionId: sub.id,
-          createdAt: sub.createdAt
-        };
-      });
-      
-      // Combinar transações normais com assinaturas
-      const allTransactions = [...cardTransactions, ...subscriptionTransactions]
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      
-      res.json(allTransactions);
+             // Retornar apenas as transações reais do cartão (sem assinaturas automáticas)
+      res.json(cardTransactions);
     } catch (error) {
       console.error("Erro ao buscar transações do cartão:", error);
       res.status(500).json({ error: "Erro interno do servidor" });
@@ -1552,43 +1516,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const currentYear = today.getFullYear();
         const closingDay = creditCard.closingDay;
         
-        // Calcular período da nova fatura em aberto
-        let newInvoiceStartDate: string;
-        let newInvoiceEndDate: string;
-        
-        if (closingDay === 1) {
-          newInvoiceStartDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0];
-          newInvoiceEndDate = new Date(currentYear, currentMonth, 31).toISOString().split('T')[0];
-        } else {
-          newInvoiceStartDate = new Date(currentYear, currentMonth - 1, closingDay).toISOString().split('T')[0];
-          newInvoiceEndDate = new Date(currentYear, currentMonth, closingDay - 1).toISOString().split('T')[0];
-        }
-        
-        // Buscar transações da nova fatura em aberto
-        const allTransactions = await storage.getTransactions();
-        const newInvoiceTransactions = allTransactions.filter(t => 
-          t.creditCardId === invoice.creditCardId &&
-          t.date >= newInvoiceStartDate &&
-          t.date <= newInvoiceEndDate
-        );
-        
-        // Calcular novo limite usado baseado na nova fatura
-        const newInvoiceAmount = newInvoiceTransactions.reduce((sum, t) => 
-          sum + parseFloat(t.amount), 0
-        );
-        
-        console.log(`Nova fatura em aberto: R$ ${newInvoiceAmount.toFixed(2)}`);
-        console.log(`Transações da nova fatura:`, newInvoiceTransactions.map(t => `${t.description}: R$ ${t.amount}`));
-        
-        // Atualizar o limite usado do cartão
+        // CORREÇÃO: Após pagamento, o limite usado deve ser ZERO (fatura quitada)
+        // O limite será recalculado automaticamente quando novas transações forem feitas
         await storage.updateCreditCard(invoice.creditCardId, {
-          currentUsed: newInvoiceAmount.toFixed(2)
+          currentUsed: "0.00"
         });
         
-        console.log(`Limite do cartão atualizado para: R$ ${newInvoiceAmount.toFixed(2)}`);
+        console.log(`Limite do cartão zerado após pagamento da fatura`);
       }
       
-      res.json(updatedInvoice);
+      res.json({
+        success: true,
+        data: updatedInvoice,
+        message: "Pagamento registrado com sucesso!"
+      });
     } catch (error) {
       console.error("Erro ao registrar pagamento:", error);
       res.status(500).json({ error: "Erro interno do servidor" });

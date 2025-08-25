@@ -145,44 +145,17 @@ export class CreditCardService {
       t.creditCardId === creditCardId && t.type === 'expense'
     );
 
-    // 🔥 CORREÇÃO FINAL: Buscar TODAS as assinaturas da fatura atual
-    // REGRA: Se a assinatura foi criada ANTES do fim da fatura, ela SEMPRE aparece
-    const allSubscriptions = await this.storage.getSubscriptions();
-    const subscriptions = allSubscriptions.filter(s => {
-      if (s.creditCardId !== creditCardId || s.paymentMethod !== 'credito') {
-        return false;
-      }
-
-      const subscriptionCreated = new Date(s.createdAt || new Date());
-      
-      // 🔥 REGRA SIMPLES: Assinatura aparece se foi criada ANTES do fim da fatura
-      // NÃO importa se está ativa ou inativa - usuário usou, deve pagar!
-      const wasCreatedBeforeInvoiceEnd = subscriptionCreated.getTime() <= endDate.getTime();
-      
-      if (!wasCreatedBeforeInvoiceEnd) {
-        console.log(`❌ Assinatura ${s.name}: Não aparece (criada após o fim da fatura)`);
-        return false;
-      }
-      
-      // 🔥 REGRA PRINCIPAL: Se foi criada antes do fim da fatura, SEMPRE aparece
-      // independente de estar ativa ou inativa
-      console.log(`✅ Assinatura ${s.name}: APARECE na fatura (criada em ${subscriptionCreated.toISOString().split('T')[0]}) - Status: ${s.isActive ? 'ATIVA' : 'INATIVA'}`);
-      return true;
-    });
-
-    // Calculate total amount
+    // Calculate total amount (apenas transações reais)
     const transactionsTotal = transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
-    const subscriptionsTotal = subscriptions.reduce((sum, s) => sum + parseFloat(s.amount), 0);
-    const totalAmount = transactionsTotal + subscriptionsTotal;
+    const totalAmount = transactionsTotal;
 
     console.log(`📊 Fatura calculada:`);
     console.log(`   - Transações: R$ ${transactionsTotal.toFixed(2)}`);
-    console.log(`   - Assinaturas: R$ ${subscriptionsTotal.toFixed(2)} (${subscriptions.length} assinaturas)`);
     console.log(`   - Total: R$ ${totalAmount.toFixed(2)}`);
 
     return {
       transactions,
-      subscriptions,
+      subscriptions: [], // Não incluir assinaturas automaticamente
       totalAmount,
       creditCard
     };
@@ -471,49 +444,17 @@ export class CreditCardService {
       return isCorrectCard && isExpense && isInPeriod;
     });
 
-    // Buscar assinaturas da fatura atual (independente do status)
-    const subscriptions = await this.storage.getSubscriptions();
-    const currentInvoiceSubscriptions = subscriptions.filter(s => {
-      if (s.creditCardId !== creditCardId || s.paymentMethod !== 'credito') {
-        return false;
-      }
-
-      const subscriptionCreated = new Date(s.createdAt || new Date());
-      
-      // 🔥 LÓGICA FINAL CORRIGIDA: Assinatura deve aparecer na fatura se:
-      // 1. Foi criada ANTES do fim da fatura atual, E
-      // 2. Para a fatura ATUAL: SEMPRE aparece (independente do status)
-      // 3. Para faturas FUTURAS: só aparece se estiver ativa
-      
-      const wasCreatedBeforeInvoiceEnd = subscriptionCreated.getTime() <= invoiceEndDate.getTime();
-      
-      if (!wasCreatedBeforeInvoiceEnd) {
-        console.log(`❌ Assinatura ${s.name}: Não deve aparecer na fatura (criada após o fim da fatura)`);
-        return false;
-      }
-      
-      // 🔥 REGRA PRINCIPAL: Na fatura atual, assinatura SEMPRE aparece
-      // independente de estar ativa ou inativa (usuário usou, deve pagar)
-      console.log(`✅ Assinatura ${s.name}: Deve aparecer na fatura atual (criada em ${subscriptionCreated.toISOString().split('T')[0]}) - Status: ${s.isActive ? 'ATIVA' : 'INATIVA'}`);
-      return true;
-    });
-
-    // Calcular valores da fatura atual
+    // Calcular valores da fatura atual (apenas transações reais)
     const transactionsTotal = currentInvoiceTransactions.reduce((sum, t) => 
       sum + parseFloat(t.amount), 0
     );
     
-    const subscriptionsTotal = currentInvoiceSubscriptions.reduce((sum, s) => 
-      sum + parseFloat(s.amount), 0
-    );
-
-    const currentInvoiceAmount = transactionsTotal + subscriptionsTotal;
+    const currentInvoiceAmount = transactionsTotal;
     const paidAmount = currentInvoice ? parseFloat(currentInvoice.paidAmount || '0') : 0;
     const remainingBalance = currentInvoiceAmount - paidAmount;
 
     console.log(`📊 Valores da fatura:`);
     console.log(`   - Transações: R$ ${transactionsTotal.toFixed(2)}`);
-    console.log(`   - Assinaturas: R$ ${subscriptionsTotal.toFixed(2)}`);
     console.log(`   - Total da fatura: R$ ${currentInvoiceAmount.toFixed(2)}`);
     console.log(`   - Valor pago: R$ ${paidAmount.toFixed(2)}`);
     console.log(`   - Saldo restante: R$ ${remainingBalance.toFixed(2)}`);

@@ -59,8 +59,11 @@ export default function ExpenseForm({ categories, selectedMonth, selectedYear }:
 
   const allTransactions = transactionsResponse?.data || [];
 
-  // Filtrar apenas transações de despesa
-  const expenseTransactions = allTransactions.filter((t: any) => t.type === 'expense');
+  // Filtrar apenas transações de despesa que NÃO são de cartão de crédito
+  // As despesas de cartão de crédito têm sua própria página dedicada
+  const expenseTransactions = allTransactions.filter((t: any) => 
+    t.type === 'expense' && !t.creditCardId
+  );
 
   // Filtrar transações baseado nos filtros
   const filteredExpenseTransactions = expenseTransactions.filter((transaction: any) => {
